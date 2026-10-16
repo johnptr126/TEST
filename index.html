@@ -168,7 +168,7 @@
             <!-- $$$ -->
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
-                <span class="stat-value" id="val-money">$0</span>
+                <span class="stat-value" id="val-money">0</span>
                 <span class="stat-rate" id="rate-money">0/h</span>
             </div>
         </div>
@@ -290,7 +290,7 @@
             }
         }
 
-        // Handshake
+        // Initial handshake
         setTimeout(() => {
             sendTycoon({ type: "pin" });
             sendTycoon({ type: "getData" });
@@ -310,7 +310,6 @@
                         "pos_y"
                     ] 
                 });
-                sendTycoon({ type: "getData" });
             } catch (e) {}
         }, 1500);
 
@@ -328,7 +327,7 @@
             const bxpHour = gainedBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
-            // Money/h (no + and no $)
+            // Money/h (raw compact value without $ or +)
             const moneyHour = totalCashEarned / elapsedHours;
             elMoneyRate.textContent = formatCompact(moneyHour) + "/h";
         }
@@ -365,7 +364,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned (starts with $, no +)
+            // 2. Cash Earned (raw compact number, no $ prefix)
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (initialWallet === null) {
@@ -375,33 +374,34 @@
                     const delta = currentWallet - lastWallet;
                     if (delta > 0) {
                         totalCashEarned += delta;
-                        elMoney.textContent = "$" + formatCompact(totalCashEarned);
+                        elMoney.textContent = formatCompact(totalCashEarned);
                         updateHourlyRates();
                     }
                     lastWallet = currentWallet;
                 }
             }
 
-            // 3. XP & Stop Counting (compact formatting applied to base value)
+            // 3. XP & Stop Counting (fixed startup double-increment)
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number') {
-                if (startXp === null || startXp === 0) {
+                if (startXp === null) {
+                    // Lock baseline onto genuine first XP payload
                     startXp = rawXp;
                     currentXp = rawXp;
                 } else if (rawXp > currentXp) {
                     stopCount++;
                     currentXp = rawXp;
                     elStops.textContent = String(stopCount);
+
+                    gainedXp = currentXp - startXp;
+                    elXp.textContent = formatCompact(gainedXp);
+                    updateHourlyRates();
                 } else if (rawXp < currentXp) {
                     currentXp = rawXp;
                 }
-
-                gainedXp = currentXp - startXp;
-                elXp.textContent = formatCompact(gainedXp);
-                updateHourlyRates();
             }
 
-            // 4. BXP Tokens (compact formatting applied to base value)
+            // 4. BXP Tokens
             let rawBxp = payload[JOB_BXP_KEY];
             if (!rawBxp && payload.inventory) {
                 try {
