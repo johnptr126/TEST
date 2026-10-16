@@ -17,7 +17,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
-        /* Suppress Netlify badge injection elements */
+        /* Suppress Netlify badge elements */
         [data-netlify-deploy-id],
         #netlify-badge,
         .netlify-badge,
@@ -47,10 +47,10 @@
             background-color: #000000 !important;
             border: 3px solid #ffffff;
             border-radius: 0;
-            padding: 16px 20px;
+            padding: 14px 18px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             pointer-events: auto;
         }
 
@@ -61,37 +61,25 @@
             width: 100%;
         }
 
-        .label-group {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
         .stat-label {
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             color: #d1d5db;
         }
 
-        .key-debug {
-            font-family: "Consolas", monospace;
-            font-size: 9px;
-            color: #6b7280;
-            letter-spacing: 0;
-            text-transform: none;
-        }
-
         .stat-value {
             font-family: "Consolas", monospace;
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 700;
             letter-spacing: 0.5px;
         }
 
+        /* Accents */
         .stat-row.xp .stat-value { color: #58a6ff; }
         .stat-row.bxp .stat-value { color: #bc8cff; }
+        .stat-row.drops .stat-value { color: #ffd54f; }
         .stat-row.money .stat-value { color: #3fb950; }
 
         .stat-row-divider {
@@ -107,6 +95,7 @@
             align-items: center;
         }
 
+        /* Fixed 100% solid black CV boxes with pure white border */
         .hud-card {
             background-color: #000000 !important;
             border: 4px solid #ffffff;
@@ -133,19 +122,18 @@
         <!-- TOP: Vertically Stacked Stats Dashboard -->
         <div class="stats-panel">
             <div class="stat-row xp">
-                <div class="label-group">
-                    <span class="stat-label">+XP EARNED</span>
-                    <span class="key-debug" id="debug-xp-key">searching...</span>
-                </div>
+                <span class="stat-label">+XP EARNED</span>
                 <span class="stat-value" id="val-xp">+0</span>
             </div>
             <div class="stat-row-divider"></div>
             <div class="stat-row bxp">
-                <div class="label-group">
-                    <span class="stat-label">+BXP EARNED</span>
-                    <span class="key-debug" id="debug-bxp-key">searching...</span>
-                </div>
+                <span class="stat-label">+BXP TOKENS</span>
                 <span class="stat-value" id="val-bxp">+0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+            <div class="stat-row drops">
+                <span class="stat-label">DROPS</span>
+                <span class="stat-value" id="val-drops">0</span>
             </div>
             <div class="stat-row-divider"></div>
             <div class="stat-row money">
@@ -167,8 +155,10 @@
 
     <script>
         const COORD_OFFSET = 10000;
+        const JOB_EXP_KEY = "exp_train_train";
+        const JOB_BXP_KEY = "exp_token_a|train|train";
 
-        // Coordinate canvases
+        // Canvases
         const canvasX = document.getElementById('cv-x');
         const canvasY = document.getElementById('cv-y');
         const ctxX = canvasX.getContext('2d');
@@ -177,17 +167,17 @@
         // Stats UI elements
         const elXp = document.getElementById('val-xp');
         const elBxp = document.getElementById('val-bxp');
+        const elDrops = document.getElementById('val-drops');
         const elMoney = document.getElementById('val-money');
-        const debugXpKey = document.getElementById('debug-xp-key');
-        const debugBxpKey = document.getElementById('debug-bxp-key');
         const hudEl = document.getElementById('hud');
 
-        // Tracking stores: maps key_name -> { initial: number, current: number }
-        const xpStore = {};
-        let activeXpKey = null;
+        // Session Tracking State
+        let startXp = null;
+        let currentXp = 0;
+        let dropCount = 0;
 
-        const bxpStore = {};
-        let activeBxpKey = null;
+        let startBxp = null;
+        let currentBxp = 0;
 
         let initialWallet = null;
         let lastWallet = null;
@@ -230,16 +220,22 @@
             }
         }
 
-        // Initial handshake
+        // Handshake
         setTimeout(() => {
             sendTycoon({ type: "pin" });
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Keep polling getData every 3 seconds to ensure skill/cache updates arrive
+        // Targeted polling every 1.5s using the discovered keys
         setInterval(() => {
-            sendTycoon({ type: "getData" });
-        }, 3000);
+            try {
+                sendTycoon({ 
+                    type: "getNamedData", 
+                    keys: [JOB_EXP_KEY, JOB_BXP_KEY, "inventory", "wallet", "pos_x", "pos_y"] 
+                });
+                sendTycoon({ type: "getData" });
+            } catch (e) {}
+        }, 1500);
 
         window.addEventListener('message', (event) => {
             let msg = event.data;
@@ -249,14 +245,13 @@
             }
 
             if (!msg) return;
-
-            const payload = msg.data ? msg.data : msg;
+            const payload = (msg.type === 'data' && msg.data) ? msg.data : (msg.data ? msg.data : msg);
 
             if (payload.hidden !== undefined) {
                 hudEl.style.display = payload.hidden ? 'none' : 'flex';
             }
 
-            // 1. Process Coordinates (Strict 5-digit padded, 1-bit binary)
+            // 1. Coordinates (Zero-latency)
             const posX = payload.pos_x !== undefined ? Number(payload.pos_x) : null;
             const posY = payload.pos_y !== undefined ? Number(payload.pos_y) : null;
 
@@ -268,10 +263,9 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Process Cash Earned This Session
+            // 2. Cash Earned
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
-
                 if (initialWallet === null) {
                     initialWallet = currentWallet;
                     lastWallet = currentWallet;
@@ -285,44 +279,46 @@
                 }
             }
 
-            // 3. Scan & Process All XP Keys (exp_*)
-            for (const key in payload) {
-                if (key.startsWith("exp_") && typeof payload[key] === 'number') {
-                    const val = Number(payload[key]);
-                    const lk = key.toLowerCase();
+            // 3. XP & Drop Counting (using exp_train_train)
+            const rawXp = payload[JOB_EXP_KEY];
+            if (typeof rawXp === 'number') {
+                if (startXp === null || startXp === 0) {
+                    startXp = rawXp;
+                    currentXp = rawXp;
+                } else if (rawXp > currentXp) {
+                    dropCount++;
+                    currentXp = rawXp;
+                    elDrops.textContent = dropCount;
+                } else if (rawXp < currentXp) {
+                    currentXp = rawXp;
+                }
 
-                    // Check if this is a Bonus XP key
-                    const isBonus = lk.includes("bonus") || lk.includes("bxp");
+                const gainedXp = currentXp - startXp;
+                elXp.textContent = "+" + gainedXp.toLocaleString();
+            }
 
-                    if (isBonus) {
-                        if (!bxpStore[key]) {
-                            bxpStore[key] = { initial: val, current: val };
-                        } else {
-                            bxpStore[key].current = val;
-                        }
-                        activeBxpKey = key;
-                        debugBxpKey.textContent = key;
-                        const gainedBxp = bxpStore[key].current - bxpStore[key].initial;
-                        elBxp.textContent = "+" + gainedBxp.toLocaleString();
-                    } else {
-                        // Regular Skill XP key
-                        if (!xpStore[key]) {
-                            xpStore[key] = { initial: val, current: val };
-                        } else {
-                            xpStore[key].current = val;
-                        }
-
-                        // Prefer train / transport / conductor keys if present
-                        if (!activeXpKey || lk.includes("train") || lk.includes("conduct") || lk.includes("transport")) {
-                            activeXpKey = key;
-                            debugXpKey.textContent = key;
-                        }
-
-                        if (activeXpKey && xpStore[activeXpKey]) {
-                            const gainedXp = xpStore[activeXpKey].current - xpStore[activeXpKey].initial;
-                            elXp.textContent = "+" + gainedXp.toLocaleString();
-                        }
+            // 4. BXP Tokens (using exp_token_a|train|train + inventory fallback)
+            let rawBxp = payload[JOB_BXP_KEY];
+            if (!rawBxp && payload.inventory) {
+                try {
+                    let inv = (typeof payload.inventory === 'string') ? JSON.parse(payload.inventory) : payload.inventory;
+                    if (inv && inv[JOB_BXP_KEY]) {
+                        rawBxp = inv[JOB_BXP_KEY];
                     }
+                } catch (e) {}
+            }
+
+            if (rawBxp !== undefined && rawBxp !== null) {
+                let bxpNum = (typeof rawBxp === 'object') ? Number(rawBxp.amount) : Number(rawBxp);
+                if (!isNaN(bxpNum)) {
+                    if (startBxp === null) {
+                        startBxp = bxpNum;
+                        currentBxp = bxpNum;
+                    } else {
+                        currentBxp = bxpNum;
+                    }
+                    const gainedBxp = currentBxp - startBxp;
+                    elBxp.textContent = "+" + gainedBxp.toLocaleString();
                 }
             }
         });
