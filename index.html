@@ -168,8 +168,8 @@
             <!-- $$$ -->
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
-                <span class="stat-value" id="val-money">+$0</span>
-                <span class="stat-rate" id="rate-money">+$0/h</span>
+                <span class="stat-value" id="val-money">$0</span>
+                <span class="stat-rate" id="rate-money">0/h</span>
             </div>
         </div>
 
@@ -189,7 +189,7 @@
         const JOB_EXP_KEY = "exp_train_train";
         const JOB_BXP_KEY = "exp_token_a|train|train";
 
-        // Compact number formatter: converts numbers to k, m, b, t
+        // Compact number formatter: converts numbers to k, m, b, t starting at 20,000
         function formatCompact(num) {
             const isNegative = num < 0;
             const abs = Math.abs(num);
@@ -209,7 +209,6 @@
                 if (abs >= tier.limit) {
                     const scaled = abs / tier.limit;
                     let formatted = scaled >= 100 ? scaled.toFixed(0) : (scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2));
-                    // Strip unnecessary trailing zeros like 1.00m -> 1m
                     formatted = formatted.replace(/\.?0+$/, "");
                     return (isNegative ? "-" : "") + formatted + tier.suffix;
                 }
@@ -329,9 +328,9 @@
             const bxpHour = gainedBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
-            // Money/h
+            // Money/h (no + and no $)
             const moneyHour = totalCashEarned / elapsedHours;
-            elMoneyRate.textContent = "+$" + formatCompact(moneyHour) + "/h";
+            elMoneyRate.textContent = formatCompact(moneyHour) + "/h";
         }
         setInterval(updateHourlyRates, 1000);
 
@@ -366,7 +365,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned
+            // 2. Cash Earned (starts with $, no +)
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (initialWallet === null) {
@@ -376,14 +375,14 @@
                     const delta = currentWallet - lastWallet;
                     if (delta > 0) {
                         totalCashEarned += delta;
-                        elMoney.textContent = "+$" + formatCompact(totalCashEarned);
+                        elMoney.textContent = "$" + formatCompact(totalCashEarned);
                         updateHourlyRates();
                     }
                     lastWallet = currentWallet;
                 }
             }
 
-            // 3. XP & Stop Counting
+            // 3. XP & Stop Counting (compact formatting applied to base value)
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number') {
                 if (startXp === null || startXp === 0) {
@@ -402,7 +401,7 @@
                 updateHourlyRates();
             }
 
-            // 4. BXP Tokens
+            // 4. BXP Tokens (compact formatting applied to base value)
             let rawBxp = payload[JOB_BXP_KEY];
             if (!rawBxp && payload.inventory) {
                 try {
