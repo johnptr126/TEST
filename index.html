@@ -40,12 +40,12 @@
             align-items: flex-start;
         }
 
-        /* --- VERTICALLY STACKED STATS (Solid Black = Zero CEF Artifacts) --- */
+        /* --- VERTICALLY STACKED STATS (Light Grey, No Border) --- */
         .stats-panel {
             width: 372px; /* Matches 180px + 12px gap + 180px coordinates */
             box-sizing: border-box;
-            background-color: #000000 !important;
-            border: 3px solid #ffffff;
+            background-color: #d1d5db !important; /* Solid light grey */
+            border: none; /* Removed white border */
             border-radius: 0;
             padding: 14px 18px;
             display: flex;
@@ -66,7 +66,7 @@
             font-weight: 800;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: #d1d5db;
+            color: #1f2937; /* Dark charcoal text for readability on light grey */
         }
 
         .stat-value {
@@ -76,26 +76,25 @@
             letter-spacing: 0.5px;
         }
 
-        /* Accents */
-        .stat-row.xp .stat-value { color: #58a6ff; }
-        .stat-row.bxp .stat-value { color: #bc8cff; }
-        .stat-row.drops .stat-value { color: #ffd54f; }
-        .stat-row.money .stat-value { color: #3fb950; }
+        /* Value text colors on light grey background */
+        .stat-row.xp .stat-value { color: #1d4ed8; }
+        .stat-row.bxp .stat-value { color: #7e22ce; }
+        .stat-row.stops .stat-value { color: #b45309; }
+        .stat-row.money .stat-value { color: #15803d; }
 
         .stat-row-divider {
             width: 100%;
             height: 1px;
-            background: #333333;
+            background: #9ca3af; /* Soft divider */
         }
 
-        /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes) --- */
+        /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes - Untouched) --- */
         .coords-row {
             display: flex;
             gap: 12px;
             align-items: center;
         }
 
-        /* Fixed 100% solid black CV boxes with pure white border */
         .hud-card {
             background-color: #000000 !important;
             border: 4px solid #ffffff;
@@ -122,18 +121,18 @@
         <!-- TOP: Vertically Stacked Stats Dashboard -->
         <div class="stats-panel">
             <div class="stat-row xp">
-                <span class="stat-label">+XP EARNED</span>
-                <span class="stat-value" id="val-xp">+0</span>
+                <span class="stat-label">XP</span>
+                <span class="stat-value" id="val-xp">0</span>
             </div>
             <div class="stat-row-divider"></div>
             <div class="stat-row bxp">
-                <span class="stat-label">+BXP TOKENS</span>
-                <span class="stat-value" id="val-bxp">+0</span>
+                <span class="stat-label">BXP</span>
+                <span class="stat-value" id="val-bxp">0</span>
             </div>
             <div class="stat-row-divider"></div>
-            <div class="stat-row drops">
-                <span class="stat-label">DROPS</span>
-                <span class="stat-value" id="val-drops">0</span>
+            <div class="stat-row stops">
+                <span class="stat-label">STOPS</span>
+                <span class="stat-value" id="val-stops">0</span>
             </div>
             <div class="stat-row-divider"></div>
             <div class="stat-row money">
@@ -167,14 +166,14 @@
         // Stats UI elements
         const elXp = document.getElementById('val-xp');
         const elBxp = document.getElementById('val-bxp');
-        const elDrops = document.getElementById('val-drops');
+        const elStops = document.getElementById('val-stops');
         const elMoney = document.getElementById('val-money');
         const hudEl = document.getElementById('hud');
 
         // Session Tracking State
         let startXp = null;
         let currentXp = 0;
-        let dropCount = 0;
+        let stopCount = 0;
 
         let startBxp = null;
         let currentBxp = 0;
@@ -226,7 +225,7 @@
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Targeted polling every 1.5s using the discovered keys
+        // Targeted polling every 1.5s
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -263,7 +262,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned
+            // 2. Cash Earned (keeps commas via toLocaleString)
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (initialWallet === null) {
@@ -273,31 +272,31 @@
                     const delta = currentWallet - lastWallet;
                     if (delta > 0) {
                         totalCashEarned += delta;
-                        elMoney.textContent = "+$" + totalCashEarned.toLocaleString();
+                        elMoney.textContent = "+$" + Math.round(totalCashEarned).toLocaleString();
                     }
                     lastWallet = currentWallet;
                 }
             }
 
-            // 3. XP & Drop Counting (using exp_train_train)
+            // 3. XP & Stop Counting (raw string, no commas)
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number') {
                 if (startXp === null || startXp === 0) {
                     startXp = rawXp;
                     currentXp = rawXp;
                 } else if (rawXp > currentXp) {
-                    dropCount++;
+                    stopCount++;
                     currentXp = rawXp;
-                    elDrops.textContent = dropCount;
+                    elStops.textContent = String(stopCount);
                 } else if (rawXp < currentXp) {
                     currentXp = rawXp;
                 }
 
-                const gainedXp = currentXp - startXp;
-                elXp.textContent = "+" + gainedXp.toLocaleString();
+                const gainedXp = Math.round(currentXp - startXp);
+                elXp.textContent = String(gainedXp);
             }
 
-            // 4. BXP Tokens (using exp_token_a|train|train + inventory fallback)
+            // 4. BXP Tokens (raw string, no commas)
             let rawBxp = payload[JOB_BXP_KEY];
             if (!rawBxp && payload.inventory) {
                 try {
@@ -317,8 +316,8 @@
                     } else {
                         currentBxp = bxpNum;
                     }
-                    const gainedBxp = currentBxp - startBxp;
-                    elBxp.textContent = "+" + gainedBxp.toLocaleString();
+                    const gainedBxp = Math.round(currentBxp - startBxp);
+                    elBxp.textContent = String(gainedBxp);
                 }
             }
         });
