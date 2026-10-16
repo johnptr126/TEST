@@ -81,7 +81,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* Big, clear /h value where the old values were */
+        /* /h value on the right */
         .stat-rate {
             width: 130px;
             flex-shrink: 0;
@@ -169,7 +169,7 @@
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">+$0</span>
-                <span class="stat-rate" id="rate-money">0.0m/h</span>
+                <span class="stat-rate" id="rate-money">+$0/h</span>
             </div>
         </div>
 
@@ -188,6 +188,35 @@
         const COORD_OFFSET = 10000;
         const JOB_EXP_KEY = "exp_train_train";
         const JOB_BXP_KEY = "exp_token_a|train|train";
+
+        // Compact number formatter: converts numbers to k, m, b, t
+        function formatCompact(num) {
+            const isNegative = num < 0;
+            const abs = Math.abs(num);
+
+            if (abs < 20000) {
+                return (isNegative ? "-" : "") + Math.round(abs);
+            }
+
+            const tiers = [
+                { limit: 1e12, suffix: 't' },
+                { limit: 1e9,  suffix: 'b' },
+                { limit: 1e6,  suffix: 'm' },
+                { limit: 1e3,  suffix: 'k' }
+            ];
+
+            for (const tier of tiers) {
+                if (abs >= tier.limit) {
+                    const scaled = abs / tier.limit;
+                    let formatted = scaled >= 100 ? scaled.toFixed(0) : (scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2));
+                    // Strip unnecessary trailing zeros like 1.00m -> 1m
+                    formatted = formatted.replace(/\.?0+$/, "");
+                    return (isNegative ? "-" : "") + formatted + tier.suffix;
+                }
+            }
+
+            return (isNegative ? "-" : "") + Math.round(abs);
+        }
 
         // Canvases
         const canvasX = document.getElementById('cv-x');
@@ -292,17 +321,17 @@
             const elapsedHours = (Date.now() - sessionStartTime) / 3600000;
             if (elapsedHours <= 0) return;
 
-            // XP/h (whole integer)
-            const xpHour = Math.round(gainedXp / elapsedHours);
-            elXpRate.textContent = xpHour + "/h";
+            // XP/h
+            const xpHour = gainedXp / elapsedHours;
+            elXpRate.textContent = formatCompact(xpHour) + "/h";
 
-            // BXP/h (whole integer)
-            const bxpHour = Math.round(gainedBxp / elapsedHours);
-            elBxpRate.textContent = bxpHour + "/h";
+            // BXP/h
+            const bxpHour = gainedBxp / elapsedHours;
+            elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
-            // Money/h formatted in millions (e.g. 95.4m/h)
-            const moneyHourMillions = (totalCashEarned / elapsedHours) / 1000000;
-            elMoneyRate.textContent = moneyHourMillions.toFixed(1) + "m/h";
+            // Money/h
+            const moneyHour = totalCashEarned / elapsedHours;
+            elMoneyRate.textContent = "+$" + formatCompact(moneyHour) + "/h";
         }
         setInterval(updateHourlyRates, 1000);
 
@@ -347,7 +376,7 @@
                     const delta = currentWallet - lastWallet;
                     if (delta > 0) {
                         totalCashEarned += delta;
-                        elMoney.textContent = "+$" + Math.round(totalCashEarned).toLocaleString();
+                        elMoney.textContent = "+$" + formatCompact(totalCashEarned);
                         updateHourlyRates();
                     }
                     lastWallet = currentWallet;
@@ -368,8 +397,8 @@
                     currentXp = rawXp;
                 }
 
-                gainedXp = Math.round(currentXp - startXp);
-                elXp.textContent = String(gainedXp);
+                gainedXp = currentXp - startXp;
+                elXp.textContent = formatCompact(gainedXp);
                 updateHourlyRates();
             }
 
@@ -393,8 +422,8 @@
                     } else {
                         currentBxp = bxpNum;
                     }
-                    gainedBxp = Math.round(currentBxp - startBxp);
-                    elBxp.textContent = String(gainedBxp);
+                    gainedBxp = currentBxp - startBxp;
+                    elBxp.textContent = formatCompact(gainedBxp);
                     updateHourlyRates();
                 }
             }
