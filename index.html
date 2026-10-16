@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Telemetry HUD</title>
+    <style>
+        html, body {
+            background-color: transparent !important;
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            pointer-events: none;
+            user-select: none;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* HUD Pinned to bottom-left */
+        .hud-wrapper {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        /* --- STYLED STATS DASHBOARD (Bigger, Translucent Glass) --- */
+        .stats-panel {
+            width: 372px; /* Matches the combined width of the two 180px boxes + gap */
+            box-sizing: border-box;
+            background: rgba(18, 22, 32, 0.78); /* Clean modern translucent glass */
+            border: 2px solid rgba(255, 255, 255, 0.22);
+            border-radius: 10px;
+            padding: 14px 16px;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.75), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(12px);
+            pointer-events: auto;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            min-width: 95px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #9aa5b1;
+        }
+
+        .stat-value {
+            font-family: "Consolas", monospace;
+            font-size: 19px; /* Scaled up for clarity */
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-item.xp .stat-value { color: #58a6ff; }
+        .stat-item.bxp .stat-value { color: #bc8cff; }
+        .stat-item.money .stat-value { color: #3fb950; }
+
+        .stat-divider {
+            width: 1px;
+            height: 34px;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes) --- */
+        .coords-row {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        /* Fixed 100% solid black CV boxes with pure white border */
+        .hud-card {
+            background-color: #000000 !important;
+            border: 4px solid #ffffff;
+            border-radius: 0;
+            padding: 0;
+            width: 180px;
+            height: 70px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-wrapper" id="hud">
+        <!-- TOP: Scaled Stats Dashboard (Session XP, Session BXP, Earned Cash) -->
+        <div class="stats-panel">
+            <div class="stat-item xp">
+                <span class="stat-label">+XP EARNED</span>
+                <span class="stat-value" id="val-xp">+0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item bxp">
+                <span class="stat-label">+BXP EARNED</span>
+                <span class="stat-value" id="val-bxp">+0</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item money">
+                <span class="stat-label">+EARNED $</span>
+                <span class="stat-value" id="val-money">+$0</span>
+            </div>
+        </div>
+
+        <!-- BOTTOM: Strict 1-Bit CV Template-Matching Coordinates -->
+        <div class="coords-row">
+            <div class="hud-card">
+                <canvas id="cv-x" width="180" height="70"></canvas>
+            </div>
+            <div class="hud-card">
+                <canvas id="cv-y" width="180" height="70"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const COORD_OFFSET = 10000;
+
+        // Coordinate canvases
+        const canvasX = document.getElementById('cv-x');
+        const canvasY = document.getElementById('cv-y');
+        const ctxX = canvasX.getContext('2d');
+        const ctxY = canvasY.getContext('2d');
+
+        // Stats UI elements
+        const elXp = document.getElementById('val-xp');
+        const elBxp = document.getElementById('val-bxp');
+        const elMoney = document.getElementById('val-money');
+        const hudEl = document.getElementById('hud');
+
+        // Session tracking states
+        let initialXp = null;
+        let detectedXpKey = null;
+
+        let initialBxp = null;
+        let detectedBxpKey = null;
+
+        let initialWallet = null;
+        let lastWallet = null;
+        let totalCashEarned = 0;
+
+        // Strict 1-bit binary rasterizer for CV templates
+        function renderBinarizedText(ctx, canvas, text) {
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, w, h);
+
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 44px Consolas, monospace";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(text, w / 2, h / 2);
+
+            const imgData = ctx.getImageData(0, 0, w, h);
+            const data = imgData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                const val = (data[i] + data[i + 1] + data[i + 2]) / 3 > 128 ? 255 : 0;
+                data[i] = val;
+                data[i + 1] = val;
+                data[i + 2] = val;
+                data[i + 3] = 255;
+            }
+            ctx.putImageData(imgData, 0, 0);
+        }
+
+        // Initialize coordinate displays
+        renderBinarizedText(ctxX, canvasX, "10000");
+        renderBinarizedText(ctxY, canvasY, "10000");
+
+        function sendTycoon(payload) {
+            window.postMessage(payload, "*");
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(payload, "*");
+            }
+        }
+
+        setTimeout(() => {
+            sendTycoon({ type: "pin" });
+            sendTycoon({ type: "getData" });
+        }, 300);
+
+        const pollTimer = setInterval(() => {
+            sendTycoon({ type: "getData" });
+        }, 2000);
+
+        window.addEventListener('message', (event) => {
+            let msg = event.data;
+
+            if (typeof msg === 'string') {
+                try { msg = JSON.parse(msg); } catch (e) { return; }
+            }
+
+            if (!msg) return;
+
+            const payload = msg.data ? msg.data : msg;
+
+            if (payload.hidden !== undefined) {
+                hudEl.style.display = payload.hidden ? 'none' : 'flex';
+            }
+
+            // 1. Process Coordinates (Unchanged: 5-digit padded, 1-bit binary)
+            const posX = payload.pos_x !== undefined ? Number(payload.pos_x) : null;
+            const posY = payload.pos_y !== undefined ? Number(payload.pos_y) : null;
+
+            if (posX !== null && posY !== null) {
+                clearInterval(pollTimer);
+
+                const displayX = String(Math.round(posX + COORD_OFFSET)).padStart(5, '0');
+                const displayY = String(Math.round(posY + COORD_OFFSET)).padStart(5, '0');
+
+                renderBinarizedText(ctxX, canvasX, displayX);
+                renderBinarizedText(ctxY, canvasY, displayY);
+            }
+
+            // 2. Process Cash Earned This Session
+            if (payload.wallet !== undefined) {
+                const currentWallet = Number(payload.wallet);
+
+                if (initialWallet === null) {
+                    initialWallet = currentWallet;
+                    lastWallet = currentWallet;
+                } else {
+                    // If wallet increases, add positive delta to total session earned
+                    const delta = currentWallet - lastWallet;
+                    if (delta > 0) {
+                        totalCashEarned += delta;
+                        elMoney.textContent = "+$" + totalCashEarned.toLocaleString();
+                    }
+                    lastWallet = currentWallet;
+                }
+            }
+
+            // 3. Scan & Track XP (Auto-detecting train skill key)
+            if (!detectedXpKey) {
+                for (const key in payload) {
+                    if (key.startsWith("exp_") && (key.includes("train") || key.includes("transport") || key.includes("conduct"))) {
+                        detectedXpKey = key;
+                        break;
+                    }
+                }
+            }
+
+            if (detectedXpKey && payload[detectedXpKey] !== undefined) {
+                const currentXp = Number(payload[detectedXpKey]);
+                if (initialXp === null) {
+                    initialXp = currentXp;
+                }
+                const gainedXp = currentXp - initialXp;
+                elXp.textContent = "+" + gainedXp.toLocaleString();
+            }
+
+            // 4. Scan & Track BXP (Auto-detecting any bonus XP key variations)
+            if (!detectedBxpKey) {
+                for (const key in payload) {
+                    const lk = key.toLowerCase();
+                    if ((lk.includes("bonus") || lk.includes("bxp")) && (lk.startsWith("exp_") || typeof payload[key] === 'number')) {
+                        detectedBxpKey = key;
+                        console.log("Found BXP candidate key:", key, payload[key]);
+                        break;
+                    }
+                }
+            }
+
+            if (detectedBxpKey && payload[detectedBxpKey] !== undefined) {
+                const currentBxp = Number(payload[detectedBxpKey]);
+                if (initialBxp === null) {
+                    initialBxp = currentBxp;
+                }
+                const gainedBxp = currentBxp - initialBxp;
+                elBxp.textContent = "+" + gainedBxp.toLocaleString();
+            }
+        });
+    </script>
+</body>
+</html>
