@@ -40,16 +40,16 @@
             align-items: flex-start;
         }
 
-        /* --- VERTICALLY STACKED STATS (Solid Black = Zero CEF Black Box Artifact) --- */
+        /* --- VERTICALLY STACKED STATS (Solid Black = Zero CEF Artifacts) --- */
         .stats-panel {
-            width: 372px; /* Matches 180px + 12px gap + 180px of coordinates */
+            width: 372px; /* Matches 180px + 12px gap + 180px coordinates */
             box-sizing: border-box;
             background-color: #000000 !important;
             border: 3px solid #ffffff;
             border-radius: 0;
             padding: 16px 20px;
             display: flex;
-            flex-direction: column; /* Stacked vertically */
+            flex-direction: column;
             gap: 12px;
             pointer-events: auto;
         }
@@ -61,6 +61,12 @@
             width: 100%;
         }
 
+        .label-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
         .stat-label {
             font-size: 15px;
             font-weight: 800;
@@ -69,14 +75,21 @@
             color: #d1d5db;
         }
 
+        .key-debug {
+            font-family: "Consolas", monospace;
+            font-size: 9px;
+            color: #6b7280;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+
         .stat-value {
             font-family: "Consolas", monospace;
-            font-size: 26px; /* Big, clear readout */
+            font-size: 26px;
             font-weight: 700;
             letter-spacing: 0.5px;
         }
 
-        /* Color accents */
         .stat-row.xp .stat-value { color: #58a6ff; }
         .stat-row.bxp .stat-value { color: #bc8cff; }
         .stat-row.money .stat-value { color: #3fb950; }
@@ -94,7 +107,6 @@
             align-items: center;
         }
 
-        /* Fixed 100% solid black CV boxes with pure white border */
         .hud-card {
             background-color: #000000 !important;
             border: 4px solid #ffffff;
@@ -121,12 +133,18 @@
         <!-- TOP: Vertically Stacked Stats Dashboard -->
         <div class="stats-panel">
             <div class="stat-row xp">
-                <span class="stat-label">+XP EARNED</span>
+                <div class="label-group">
+                    <span class="stat-label">+XP EARNED</span>
+                    <span class="key-debug" id="debug-xp-key">searching...</span>
+                </div>
                 <span class="stat-value" id="val-xp">+0</span>
             </div>
             <div class="stat-row-divider"></div>
             <div class="stat-row bxp">
-                <span class="stat-label">+BXP EARNED</span>
+                <div class="label-group">
+                    <span class="stat-label">+BXP EARNED</span>
+                    <span class="key-debug" id="debug-bxp-key">searching...</span>
+                </div>
                 <span class="stat-value" id="val-bxp">+0</span>
             </div>
             <div class="stat-row-divider"></div>
@@ -160,14 +178,16 @@
         const elXp = document.getElementById('val-xp');
         const elBxp = document.getElementById('val-bxp');
         const elMoney = document.getElementById('val-money');
+        const debugXpKey = document.getElementById('debug-xp-key');
+        const debugBxpKey = document.getElementById('debug-bxp-key');
         const hudEl = document.getElementById('hud');
 
-        // Session tracking baselines & auto-detected key names
-        let initialXp = null;
-        let detectedXpKey = null;
+        // Tracking stores: maps key_name -> { initial: number, current: number }
+        const xpStore = {};
+        let activeXpKey = null;
 
-        let initialBxp = null;
-        let detectedBxpKey = null;
+        const bxpStore = {};
+        let activeBxpKey = null;
 
         let initialWallet = null;
         let lastWallet = null;
@@ -210,14 +230,16 @@
             }
         }
 
+        // Initial handshake
         setTimeout(() => {
             sendTycoon({ type: "pin" });
             sendTycoon({ type: "getData" });
         }, 300);
 
-        const pollTimer = setInterval(() => {
+        // Keep polling getData every 3 seconds to ensure skill/cache updates arrive
+        setInterval(() => {
             sendTycoon({ type: "getData" });
-        }, 2000);
+        }, 3000);
 
         window.addEventListener('message', (event) => {
             let msg = event.data;
@@ -239,8 +261,6 @@
             const posY = payload.pos_y !== undefined ? Number(payload.pos_y) : null;
 
             if (posX !== null && posY !== null) {
-                clearInterval(pollTimer);
-
                 const displayX = String(Math.round(posX + COORD_OFFSET)).padStart(5, '0');
                 const displayY = String(Math.round(posY + COORD_OFFSET)).padStart(5, '0');
 
@@ -265,43 +285,45 @@
                 }
             }
 
-            // 3. Scan & Track XP (Auto-detect train skill key)
-            if (!detectedXpKey) {
-                for (const key in payload) {
-                    if (key.startsWith("exp_") && (key.includes("train") || key.includes("transport") || key.includes("conduct"))) {
-                        detectedXpKey = key;
-                        break;
-                    }
-                }
-            }
-
-            if (detectedXpKey && payload[detectedXpKey] !== undefined) {
-                const currentXp = Number(payload[detectedXpKey]);
-                if (initialXp === null) {
-                    initialXp = currentXp;
-                }
-                const gainedXp = currentXp - initialXp;
-                elXp.textContent = "+" + gainedXp.toLocaleString();
-            }
-
-            // 4. Scan & Track BXP (Auto-detect bonus key)
-            if (!detectedBxpKey) {
-                for (const key in payload) {
+            // 3. Scan & Process All XP Keys (exp_*)
+            for (const key in payload) {
+                if (key.startsWith("exp_") && typeof payload[key] === 'number') {
+                    const val = Number(payload[key]);
                     const lk = key.toLowerCase();
-                    if ((lk.includes("bonus") || lk.includes("bxp")) && (lk.startsWith("exp_") || typeof payload[key] === 'number')) {
-                        detectedBxpKey = key;
-                        break;
+
+                    // Check if this is a Bonus XP key
+                    const isBonus = lk.includes("bonus") || lk.includes("bxp");
+
+                    if (isBonus) {
+                        if (!bxpStore[key]) {
+                            bxpStore[key] = { initial: val, current: val };
+                        } else {
+                            bxpStore[key].current = val;
+                        }
+                        activeBxpKey = key;
+                        debugBxpKey.textContent = key;
+                        const gainedBxp = bxpStore[key].current - bxpStore[key].initial;
+                        elBxp.textContent = "+" + gainedBxp.toLocaleString();
+                    } else {
+                        // Regular Skill XP key
+                        if (!xpStore[key]) {
+                            xpStore[key] = { initial: val, current: val };
+                        } else {
+                            xpStore[key].current = val;
+                        }
+
+                        // Prefer train / transport / conductor keys if present
+                        if (!activeXpKey || lk.includes("train") || lk.includes("conduct") || lk.includes("transport")) {
+                            activeXpKey = key;
+                            debugXpKey.textContent = key;
+                        }
+
+                        if (activeXpKey && xpStore[activeXpKey]) {
+                            const gainedXp = xpStore[activeXpKey].current - xpStore[activeXpKey].initial;
+                            elXp.textContent = "+" + gainedXp.toLocaleString();
+                        }
                     }
                 }
-            }
-
-            if (detectedBxpKey && payload[detectedBxpKey] !== undefined) {
-                const currentBxp = Number(payload[detectedBxpKey]);
-                if (initialBxp === null) {
-                    initialBxp = currentBxp;
-                }
-                const gainedBxp = currentBxp - initialBxp;
-                elBxp.textContent = "+" + gainedBxp.toLocaleString();
             }
         });
     </script>
