@@ -40,50 +40,51 @@
             align-items: flex-start;
         }
 
-        /* --- STYLED STATS DASHBOARD (Bigger, Zero-Blur Artifact Free) --- */
+        /* --- VERTICALLY STACKED STATS (Solid Black = Zero CEF Black Box Artifact) --- */
         .stats-panel {
             width: 372px; /* Matches 180px + 12px gap + 180px of coordinates */
             box-sizing: border-box;
-            background: rgba(14, 18, 25, 0.88); /* Clean dark tint that natively blends in CEF */
-            border: 2px solid rgba(255, 255, 255, 0.28);
-            border-radius: 8px;
-            padding: 16px 18px; /* Taller padding */
+            background-color: #000000 !important;
+            border: 3px solid #ffffff;
+            border-radius: 0;
+            padding: 16px 20px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column; /* Stacked vertically */
+            gap: 12px;
             pointer-events: auto;
         }
 
-        .stat-item {
+        .stat-row {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 95px;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
         }
 
         .stat-label {
-            font-size: 13px; /* Scaled up from 10px */
+            font-size: 15px;
             font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: #a0aec0;
+            color: #d1d5db;
         }
 
         .stat-value {
             font-family: "Consolas", monospace;
-            font-size: 24px; /* Big, clear readout */
+            font-size: 26px; /* Big, clear readout */
             font-weight: 700;
             letter-spacing: 0.5px;
         }
 
-        .stat-item.xp .stat-value { color: #58a6ff; }
-        .stat-item.bxp .stat-value { color: #bc8cff; }
-        .stat-item.money .stat-value { color: #3fb950; }
+        /* Color accents */
+        .stat-row.xp .stat-value { color: #58a6ff; }
+        .stat-row.bxp .stat-value { color: #bc8cff; }
+        .stat-row.money .stat-value { color: #3fb950; }
 
-        .stat-divider {
-            width: 2px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.16);
+        .stat-row-divider {
+            width: 100%;
+            height: 1px;
+            background: #333333;
         }
 
         /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes) --- */
@@ -117,19 +118,19 @@
 <body>
 
     <div class="hud-wrapper" id="hud">
-        <!-- TOP: Large Formatted Stats Dashboard -->
+        <!-- TOP: Vertically Stacked Stats Dashboard -->
         <div class="stats-panel">
-            <div class="stat-item xp">
+            <div class="stat-row xp">
                 <span class="stat-label">+XP EARNED</span>
                 <span class="stat-value" id="val-xp">+0</span>
             </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item bxp">
+            <div class="stat-row-divider"></div>
+            <div class="stat-row bxp">
                 <span class="stat-label">+BXP EARNED</span>
                 <span class="stat-value" id="val-bxp">+0</span>
             </div>
-            <div class="stat-divider"></div>
-            <div class="stat-item money">
+            <div class="stat-row-divider"></div>
+            <div class="stat-row money">
                 <span class="stat-label">+EARNED $</span>
                 <span class="stat-value" id="val-money">+$0</span>
             </div>
