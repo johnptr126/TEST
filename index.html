@@ -40,7 +40,7 @@
             align-items: flex-start;
         }
 
-        /* --- VERTICALLY STACKED STATS (Light Grey, No Border) --- */
+        /* --- VERTICALLY STACKED STATS (Light Grey, 3-Column Horizontal Layout) --- */
         .stats-panel {
             width: 372px; /* Matches 180px + 12px gap + 180px coordinates */
             box-sizing: border-box;
@@ -54,44 +54,48 @@
             pointer-events: auto;
         }
 
+        /* 3-Column horizontal row: [Label (Left)] --- [Session Value (Center)] --- [/h Rate (Right)] */
         .stat-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            align-items: baseline;
             width: 100%;
         }
 
         .stat-label {
+            width: 75px;
+            flex-shrink: 0;
             font-size: 14px;
             font-weight: 800;
             letter-spacing: 1.5px;
             text-transform: uppercase;
-            color: #1f2937; /* Dark charcoal text for readability on light grey */
+            color: #1f2937;
         }
 
-        /* Right-side value container with /h rate directly underneath */
-        .stat-value-container {
-            display: flex;
-            flex-direction: column;
-            align-items: flex-end;
-            gap: 1px;
-        }
-
+        /* Current session total centered */
         .stat-value {
+            flex: 1;
+            text-align: center;
             font-family: "Consolas", monospace;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            line-height: 1;
         }
 
+        /* Big, clear /h value where the old values were */
         .stat-rate {
+            width: 130px;
+            flex-shrink: 0;
+            text-align: right;
             font-family: "Consolas", monospace;
-            font-size: 11px;
+            font-size: 22px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            color: #4b5563; /* Subtle muted sub-label */
-            line-height: 1.1;
+            color: #111827;
+        }
+
+        /* Alignment adjustment for Stops which has no /h rate */
+        .stat-row.stops .stat-value {
+            text-align: right;
         }
 
         /* Value text colors on light grey background */
@@ -103,7 +107,7 @@
         .stat-row-divider {
             width: 100%;
             height: 1px;
-            background: #9ca3af; /* Soft divider */
+            background: #9ca3af;
         }
 
         /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes - Untouched) --- */
@@ -136,44 +140,36 @@
 <body>
 
     <div class="hud-wrapper" id="hud">
-        <!-- TOP: Vertically Stacked Stats Dashboard -->
+        <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
-            <!-- XP with /h rate -->
+            <!-- XP -->
             <div class="stat-row xp">
                 <span class="stat-label">XP</span>
-                <div class="stat-value-container">
-                    <span class="stat-value" id="val-xp">0</span>
-                    <span class="stat-rate" id="rate-xp">0/h</span>
-                </div>
+                <span class="stat-value" id="val-xp">0</span>
+                <span class="stat-rate" id="rate-xp">0/h</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- BXP with /h rate -->
+            <!-- BXP -->
             <div class="stat-row bxp">
                 <span class="stat-label">BXP</span>
-                <div class="stat-value-container">
-                    <span class="stat-value" id="val-bxp">0</span>
-                    <span class="stat-rate" id="rate-bxp">0/h</span>
-                </div>
+                <span class="stat-value" id="val-bxp">0</span>
+                <span class="stat-rate" id="rate-bxp">0/h</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- STOPS (No /h rate) -->
+            <!-- STOPS -->
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
-                <div class="stat-value-container">
-                    <span class="stat-value" id="val-stops">0</span>
-                </div>
+                <span class="stat-value" id="val-stops">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- $$$ with /h rate -->
+            <!-- $$$ -->
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
-                <div class="stat-value-container">
-                    <span class="stat-value" id="val-money">+$0</span>
-                    <span class="stat-rate" id="rate-money">+$0/h</span>
-                </div>
+                <span class="stat-value" id="val-money">+$0</span>
+                <span class="stat-rate" id="rate-money">0.0m/h</span>
             </div>
         </div>
 
@@ -290,23 +286,23 @@
             } catch (e) {}
         }, 1500);
 
-        // Update hourly rates every second
+        // Update hourly rates
         function updateHourlyRates() {
             if (!sessionStartTime) return;
             const elapsedHours = (Date.now() - sessionStartTime) / 3600000;
             if (elapsedHours <= 0) return;
 
-            // XP per hour (rounded integer)
+            // XP/h (whole integer)
             const xpHour = Math.round(gainedXp / elapsedHours);
             elXpRate.textContent = xpHour + "/h";
 
-            // BXP per hour (rounded integer)
+            // BXP/h (whole integer)
             const bxpHour = Math.round(gainedBxp / elapsedHours);
             elBxpRate.textContent = bxpHour + "/h";
 
-            // Cash per hour (formatted with commas)
-            const moneyHour = Math.round(totalCashEarned / elapsedHours);
-            elMoneyRate.textContent = "+$" + moneyHour.toLocaleString() + "/h";
+            // Money/h formatted in millions (e.g. 95.4m/h)
+            const moneyHourMillions = (totalCashEarned / elapsedHours) / 1000000;
+            elMoneyRate.textContent = moneyHourMillions.toFixed(1) + "m/h";
         }
         setInterval(updateHourlyRates, 1000);
 
@@ -341,7 +337,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned (keeps commas via toLocaleString)
+            // 2. Cash Earned
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (initialWallet === null) {
@@ -358,7 +354,7 @@
                 }
             }
 
-            // 3. XP & Stop Counting (raw string, no commas)
+            // 3. XP & Stop Counting
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number') {
                 if (startXp === null || startXp === 0) {
@@ -377,7 +373,7 @@
                 updateHourlyRates();
             }
 
-            // 4. BXP Tokens (raw string, no commas)
+            // 4. BXP Tokens
             let rawBxp = payload[JOB_BXP_KEY];
             if (!rawBxp && payload.inventory) {
                 try {
