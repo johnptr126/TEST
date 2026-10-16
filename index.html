@@ -69,11 +69,29 @@
             color: #1f2937; /* Dark charcoal text for readability on light grey */
         }
 
+        /* Right-side value container with /h rate directly underneath */
+        .stat-value-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 1px;
+        }
+
         .stat-value {
             font-family: "Consolas", monospace;
             font-size: 24px;
             font-weight: 700;
             letter-spacing: 0.5px;
+            line-height: 1;
+        }
+
+        .stat-rate {
+            font-family: "Consolas", monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            color: #4b5563; /* Subtle muted sub-label */
+            line-height: 1.1;
         }
 
         /* Value text colors on light grey background */
@@ -120,24 +138,42 @@
     <div class="hud-wrapper" id="hud">
         <!-- TOP: Vertically Stacked Stats Dashboard -->
         <div class="stats-panel">
+            <!-- XP with /h rate -->
             <div class="stat-row xp">
                 <span class="stat-label">XP</span>
-                <span class="stat-value" id="val-xp">0</span>
+                <div class="stat-value-container">
+                    <span class="stat-value" id="val-xp">0</span>
+                    <span class="stat-rate" id="rate-xp">0/h</span>
+                </div>
             </div>
             <div class="stat-row-divider"></div>
+
+            <!-- BXP with /h rate -->
             <div class="stat-row bxp">
                 <span class="stat-label">BXP</span>
-                <span class="stat-value" id="val-bxp">0</span>
+                <div class="stat-value-container">
+                    <span class="stat-value" id="val-bxp">0</span>
+                    <span class="stat-rate" id="rate-bxp">0/h</span>
+                </div>
             </div>
             <div class="stat-row-divider"></div>
+
+            <!-- STOPS (No /h rate) -->
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
-                <span class="stat-value" id="val-stops">0</span>
+                <div class="stat-value-container">
+                    <span class="stat-value" id="val-stops">0</span>
+                </div>
             </div>
             <div class="stat-row-divider"></div>
+
+            <!-- $$$ with /h rate -->
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
-                <span class="stat-value" id="val-money">+$0</span>
+                <div class="stat-value-container">
+                    <span class="stat-value" id="val-money">+$0</span>
+                    <span class="stat-rate" id="rate-money">+$0/h</span>
+                </div>
             </div>
         </div>
 
@@ -165,18 +201,29 @@
 
         // Stats UI elements
         const elXp = document.getElementById('val-xp');
+        const elXpRate = document.getElementById('rate-xp');
+
         const elBxp = document.getElementById('val-bxp');
+        const elBxpRate = document.getElementById('rate-bxp');
+
         const elStops = document.getElementById('val-stops');
+
         const elMoney = document.getElementById('val-money');
+        const elMoneyRate = document.getElementById('rate-money');
+
         const hudEl = document.getElementById('hud');
 
         // Session Tracking State
+        let sessionStartTime = null;
+
         let startXp = null;
         let currentXp = 0;
+        let gainedXp = 0;
         let stopCount = 0;
 
         let startBxp = null;
         let currentBxp = 0;
+        let gainedBxp = 0;
 
         let initialWallet = null;
         let lastWallet = null;
@@ -243,6 +290,26 @@
             } catch (e) {}
         }, 1500);
 
+        // Update hourly rates every second
+        function updateHourlyRates() {
+            if (!sessionStartTime) return;
+            const elapsedHours = (Date.now() - sessionStartTime) / 3600000;
+            if (elapsedHours <= 0) return;
+
+            // XP per hour (rounded integer)
+            const xpHour = Math.round(gainedXp / elapsedHours);
+            elXpRate.textContent = xpHour + "/h";
+
+            // BXP per hour (rounded integer)
+            const bxpHour = Math.round(gainedBxp / elapsedHours);
+            elBxpRate.textContent = bxpHour + "/h";
+
+            // Cash per hour (formatted with commas)
+            const moneyHour = Math.round(totalCashEarned / elapsedHours);
+            elMoneyRate.textContent = "+$" + moneyHour.toLocaleString() + "/h";
+        }
+        setInterval(updateHourlyRates, 1000);
+
         window.addEventListener('message', (event) => {
             let msg = event.data;
 
@@ -255,6 +322,11 @@
 
             if (payload.hidden !== undefined) {
                 hudEl.style.display = payload.hidden ? 'none' : 'flex';
+            }
+
+            // Start session clock on the first received data frame
+            if (!sessionStartTime && (payload.pos_x !== undefined || payload[JOB_EXP_KEY] !== undefined || payload.wallet !== undefined)) {
+                sessionStartTime = Date.now();
             }
 
             // 1. Coordinates (Zero-latency)
@@ -280,6 +352,7 @@
                     if (delta > 0) {
                         totalCashEarned += delta;
                         elMoney.textContent = "+$" + Math.round(totalCashEarned).toLocaleString();
+                        updateHourlyRates();
                     }
                     lastWallet = currentWallet;
                 }
@@ -299,8 +372,9 @@
                     currentXp = rawXp;
                 }
 
-                const gainedXp = Math.round(currentXp - startXp);
+                gainedXp = Math.round(currentXp - startXp);
                 elXp.textContent = String(gainedXp);
+                updateHourlyRates();
             }
 
             // 4. BXP Tokens (raw string, no commas)
@@ -323,8 +397,9 @@
                     } else {
                         currentBxp = bxpNum;
                     }
-                    const gainedBxp = Math.round(currentBxp - startBxp);
+                    gainedBxp = Math.round(currentBxp - startBxp);
                     elBxp.textContent = String(gainedBxp);
+                    updateHourlyRates();
                 }
             }
         });
