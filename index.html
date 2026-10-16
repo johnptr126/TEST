@@ -80,7 +80,6 @@
         .stat-row.xp .stat-value { color: #1d4ed8; }
         .stat-row.bxp .stat-value { color: #7e22ce; }
         .stat-row.stops .stat-value { color: #b45309; }
-        .stat-row.streak .stat-value { color: #ea580c; }
         .stat-row.money .stat-value { color: #15803d; }
 
         .stat-row-divider {
@@ -136,11 +135,6 @@
                 <span class="stat-value" id="val-stops">0</span>
             </div>
             <div class="stat-row-divider"></div>
-            <div class="stat-row streak">
-                <span class="stat-label">STREAK</span>
-                <span class="stat-value" id="val-streak">0</span>
-            </div>
-            <div class="stat-row-divider"></div>
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">+$0</span>
@@ -173,7 +167,6 @@
         const elXp = document.getElementById('val-xp');
         const elBxp = document.getElementById('val-bxp');
         const elStops = document.getElementById('val-stops');
-        const elStreak = document.getElementById('val-streak');
         const elMoney = document.getElementById('val-money');
         const hudEl = document.getElementById('hud');
 
@@ -184,8 +177,6 @@
 
         let startBxp = null;
         let currentBxp = 0;
-
-        let currentStreak = 0;
 
         let initialWallet = null;
         let lastWallet = null;
@@ -242,8 +233,6 @@
                     keys: [
                         JOB_EXP_KEY, 
                         JOB_BXP_KEY, 
-                        "train_streak",
-                        "streak", 
                         "inventory", 
                         "wallet", 
                         "pos_x", 
@@ -306,10 +295,6 @@
                     stopCount++;
                     currentXp = rawXp;
                     elStops.textContent = String(stopCount);
-
-                    if (currentStreak === 0) {
-                        elStreak.textContent = String(stopCount);
-                    }
                 } else if (rawXp < currentXp) {
                     currentXp = rawXp;
                 }
@@ -341,26 +326,6 @@
                     const gainedBxp = Math.round(currentBxp - startBxp);
                     elBxp.textContent = String(gainedBxp);
                 }
-            }
-
-            // 5. Streak Detection (Server key scanner with session fallback)
-            let streakVal = null;
-            if (payload.train_streak !== undefined) {
-                streakVal = payload.train_streak;
-            } else if (payload.streak !== undefined) {
-                streakVal = payload.streak;
-            } else {
-                for (const key in payload) {
-                    if (key.includes("streak") && typeof payload[key] === "number") {
-                        streakVal = payload[key];
-                        break;
-                    }
-                }
-            }
-
-            if (streakVal !== null) {
-                currentStreak = Math.round(Number(streakVal));
-                elStreak.textContent = String(currentStreak);
             }
         });
     </script>
