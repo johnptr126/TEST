@@ -127,11 +127,6 @@
             color: #111827;
         }
 
-        /* Alignment adjustment for Stops which has no /h rate */
-        .stat-row.stops .stat-value {
-            text-align: right;
-        }
-
         /* Value text colors on light grey background */
         .stat-row.xp .stat-value { color: #1d4ed8; }
         .stat-row.bxp .stat-value { color: #7e22ce; }
@@ -200,6 +195,7 @@
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
                 <span class="stat-value" id="val-stops">0</span>
+                <span class="stat-rate" id="rate-stops">0/h</span>
             </div>
             <div class="stat-row-divider"></div>
 
@@ -269,6 +265,7 @@
         const elBxpRate = document.getElementById('rate-bxp');
 
         const elStops = document.getElementById('val-stops');
+        const elStopsRate = document.getElementById('rate-stops');
 
         const elMoney = document.getElementById('val-money');
         const elMoneyRate = document.getElementById('rate-money');
@@ -304,7 +301,7 @@
             e.preventDefault();
         });
 
-        // Reset Handler with aggressive focus-release and re-pin
+        // Reset Handler with focus-release and re-pin
         btnReset.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -329,6 +326,7 @@
             elBxp.textContent = "0";
             elBxpRate.textContent = "0/h";
             elStops.textContent = "0";
+            elStopsRate.textContent = "0/h";
             elMoney.textContent = "0";
             elMoneyRate.textContent = "0/h";
 
@@ -339,7 +337,7 @@
             sendTycoon({ type: "pin" });
         });
 
-        // Universal Escape recovery: releases CEF focus lock and pins app
+        // Universal Escape recovery
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' || e.keyCode === 27) {
                 if (document.activeElement) document.activeElement.blur();
@@ -415,6 +413,10 @@
             // BXP/h
             const bxpHour = gainedBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
+
+            // Stops/h (rounded whole number)
+            const stopsHour = Math.round(stopCount / elapsedHours);
+            elStopsRate.textContent = stopsHour + "/h";
 
             // Money/h (raw compact value without $ or +)
             const moneyHour = totalCashEarned / elapsedHours;
