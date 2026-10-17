@@ -54,12 +54,21 @@
             pointer-events: auto;
         }
 
-        /* Top Header Row for Controls */
+        /* Top Header Row for Controls and Timer */
         .stats-header {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
             width: 100%;
             margin-bottom: -4px;
+        }
+
+        .session-timer {
+            font-family: "Consolas", monospace;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #374151;
         }
 
         .btn-reset {
@@ -172,6 +181,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
+                <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
 
@@ -199,9 +209,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- $$$ -->
-            <div class="stat-row money">
-                <span class="stat-label">$$$</span>
+            <!-- $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
                 <span class="stat-rate" id="rate-money">0/h</span>
             </div>
@@ -258,6 +266,7 @@
         const ctxY = canvasY.getContext('2d');
 
         // Stats UI elements
+        const elTimer = document.getElementById('session-timer');
         const elXp = document.getElementById('val-xp');
         const elXpRate = document.getElementById('rate-xp');
 
@@ -301,7 +310,7 @@
             e.preventDefault();
         });
 
-        // Reset Handler with focus-release and re-pin
+        // Reset Handler
         btnReset.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -317,8 +326,9 @@
             stopCount = 0;
             totalCashEarned = 0;
 
-            // Reset session timer to now
-            sessionStartTime = Date.now();
+            // Defer timer until the next stop
+            sessionStartTime = null;
+            elTimer.textContent = "00:00:00";
 
             // Reset DOM displays
             elXp.textContent = "0";
@@ -400,10 +410,20 @@
             } catch (e) {}
         }, 1200);
 
-        // Update hourly rates
-        function updateHourlyRates() {
+        // Clock & Hourly Rates Loop
+        function updateHourlyRatesAndTimer() {
             if (!sessionStartTime) return;
-            const elapsedHours = (Date.now() - sessionStartTime) / 3600000;
+
+            const elapsedMs = Date.now() - sessionStartTime;
+            const totalSec = Math.floor(elapsedMs / 1000);
+
+            // Format HH:MM:SS
+            const hrs = String(Math.floor(totalSec / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
+            const secs = String(totalSec % 60).padStart(2, '0');
+            elTimer.textContent = `${hrs}:${mins}:${secs}`;
+
+            const elapsedHours = elapsedMs / 3600000;
             if (elapsedHours <= 0) return;
 
             // XP/h
@@ -414,15 +434,15 @@
             const bxpHour = gainedBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
-            // Stops/h (rounded whole number)
+            // Stops/h
             const stopsHour = Math.round(stopCount / elapsedHours);
             elStopsRate.textContent = stopsHour + "/h";
 
-            // Money/h (raw compact value without $ or +)
+            // Money/h
             const moneyHour = totalCashEarned / elapsedHours;
             elMoneyRate.textContent = formatCompact(moneyHour) + "/h";
         }
-        setInterval(updateHourlyRates, 1000);
+        setInterval(updateHourlyRatesAndTimer, 1000);
 
         window.addEventListener('message', (event) => {
             let msg = event.data;
@@ -436,11 +456,6 @@
 
             if (payload.hidden !== undefined) {
                 hudEl.style.display = payload.hidden ? 'none' : 'flex';
-            }
-
-            // Start session clock on first received data frame
-            if (!sessionStartTime && (payload.pos_x !== undefined || payload[JOB_EXP_KEY] !== undefined || payload.wallet !== undefined)) {
-                sessionStartTime = Date.now();
             }
 
             // 1. Coordinates (Zero-latency)
@@ -466,13 +481,13 @@
                     if (delta > 0) {
                         totalCashEarned += delta;
                         elMoney.textContent = formatCompact(totalCashEarned);
-                        updateHourlyRates();
+                        updateHourlyRatesAndTimer();
                     }
                     lastWallet = currentWallet;
                 }
             }
 
-            // 3. XP & Stop Counting (Zero false-start stops)
+            // 3. XP & Stop Counting (Starts timer on stop 1)
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
@@ -483,9 +498,14 @@
                     currentXp = rawXp;
                     elStops.textContent = String(stopCount);
 
+                    // Start session clock on the very first completed stop
+                    if (sessionStartTime === null) {
+                        sessionStartTime = Date.now();
+                    }
+
                     gainedXp = currentXp - startXp;
                     elXp.textContent = formatCompact(gainedXp);
-                    updateHourlyRates();
+                    updateHourlyRatesAndTimer();
                 } else if (rawXp < currentXp) {
                     currentXp = rawXp;
                 }
@@ -513,7 +533,7 @@
                     }
                     gainedBxp = currentBxp - startBxp;
                     elBxp.textContent = formatCompact(gainedBxp);
-                    updateHourlyRates();
+                    updateHourlyRatesAndTimer();
                 }
             }
         });
