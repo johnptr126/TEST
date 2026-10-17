@@ -290,13 +290,13 @@
             }
         }
 
-        // Initial handshake
+        // Handshake
         setTimeout(() => {
             sendTycoon({ type: "pin" });
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Targeted polling every 1.5s
+        // Targeted polling and cache pull
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -310,8 +310,9 @@
                         "pos_y"
                     ] 
                 });
+                sendTycoon({ type: "getData" });
             } catch (e) {}
-        }, 1500);
+        }, 1200);
 
         // Update hourly rates
         function updateHourlyRates() {
@@ -364,7 +365,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned (raw compact number, no $ prefix)
+            // 2. Cash Earned
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (initialWallet === null) {
@@ -381,14 +382,15 @@
                 }
             }
 
-            // 3. XP & Stop Counting (fixed startup double-increment)
+            // 3. XP & Stop Counting (Zero false-start stops)
             const rawXp = payload[JOB_EXP_KEY];
-            if (typeof rawXp === 'number') {
+            if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
-                    // Lock baseline onto genuine first XP payload
+                    // First genuine non-zero reading establishes baseline; does NOT count as a stop
                     startXp = rawXp;
                     currentXp = rawXp;
                 } else if (rawXp > currentXp) {
+                    // Increment stops ONLY on subsequent genuine XP increases
                     stopCount++;
                     currentXp = rawXp;
                     elStops.textContent = String(stopCount);
@@ -401,9 +403,9 @@
                 }
             }
 
-            // 4. BXP Tokens
+            // 4. BXP Tokens (Restored robust extraction)
             let rawBxp = payload[JOB_BXP_KEY];
-            if (!rawBxp && payload.inventory) {
+            if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
                 try {
                     let inv = (typeof payload.inventory === 'string') ? JSON.parse(payload.inventory) : payload.inventory;
                     if (inv && inv[JOB_BXP_KEY]) {
