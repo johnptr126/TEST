@@ -47,11 +47,43 @@
             background-color: #d1d5db !important; /* Solid light grey */
             border: none;
             border-radius: 0;
-            padding: 14px 18px;
+            padding: 12px 18px 14px 18px;
             display: flex;
             flex-direction: column;
             gap: 10px;
             pointer-events: auto;
+        }
+
+        /* Top Header Row for Controls */
+        .stats-header {
+            display: flex;
+            justify-content: flex-end;
+            width: 100%;
+            margin-bottom: -4px;
+        }
+
+        .btn-reset {
+            background: #9ca3af;
+            border: none;
+            color: #111827;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .btn-reset:hover {
+            background: #ef4444;
+            color: #ffffff;
+        }
+
+        .btn-reset:active {
+            transform: scale(0.96);
         }
 
         /* 3-Column horizontal row: [Label (Left)] --- [Session Value (Center)] --- [/h Rate (Right)] */
@@ -142,6 +174,10 @@
     <div class="hud-wrapper" id="hud">
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
+            <div class="stats-header">
+                <button class="btn-reset" id="btn-reset" title="Reset current session telemetry">RESET</button>
+            </div>
+
             <!-- XP -->
             <div class="stat-row xp">
                 <span class="stat-label">XP</span>
@@ -235,6 +271,7 @@
         const elMoney = document.getElementById('val-money');
         const elMoneyRate = document.getElementById('rate-money');
 
+        const btnReset = document.getElementById('btn-reset');
         const hudEl = document.getElementById('hud');
 
         // Session Tracking State
@@ -252,6 +289,34 @@
         let initialWallet = null;
         let lastWallet = null;
         let totalCashEarned = 0;
+
+        // Reset Handler
+        btnReset.addEventListener('click', (e) => {
+            e.stopPropagation();
+
+            // Re-anchor baselines to latest readouts
+            if (currentXp > 0) startXp = currentXp;
+            if (currentBxp !== 0) startBxp = currentBxp;
+            if (lastWallet !== null) initialWallet = lastWallet;
+
+            // Reset deltas
+            gainedXp = 0;
+            gainedBxp = 0;
+            stopCount = 0;
+            totalCashEarned = 0;
+
+            // Reset session timer to now
+            sessionStartTime = Date.now();
+
+            // Reset DOM displays
+            elXp.textContent = "0";
+            elXpRate.textContent = "0/h";
+            elBxp.textContent = "0";
+            elBxpRate.textContent = "0/h";
+            elStops.textContent = "0";
+            elMoney.textContent = "0";
+            elMoneyRate.textContent = "0/h";
+        });
 
         // Strict 1-bit binary rasterizer for CV templates
         function renderBinarizedText(ctx, canvas, text) {
@@ -328,7 +393,7 @@
             const bxpHour = gainedBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
-            // Money/h (raw compact value without $ or +)
+            // Money/h
             const moneyHour = totalCashEarned / elapsedHours;
             elMoneyRate.textContent = formatCompact(moneyHour) + "/h";
         }
@@ -382,15 +447,13 @@
                 }
             }
 
-            // 3. XP & Stop Counting (Zero false-start stops)
+            // 3. XP & Stop Counting
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
-                    // First genuine non-zero reading establishes baseline; does NOT count as a stop
                     startXp = rawXp;
                     currentXp = rawXp;
                 } else if (rawXp > currentXp) {
-                    // Increment stops ONLY on subsequent genuine XP increases
                     stopCount++;
                     currentXp = rawXp;
                     elStops.textContent = String(stopCount);
@@ -403,7 +466,7 @@
                 }
             }
 
-            // 4. BXP Tokens (Restored robust extraction)
+            // 4. BXP Tokens
             let rawBxp = payload[JOB_BXP_KEY];
             if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
                 try {
