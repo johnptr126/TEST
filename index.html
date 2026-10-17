@@ -42,9 +42,9 @@
 
         /* --- VERTICALLY STACKED STATS (Light Grey, 3-Column Horizontal Layout) --- */
         .stats-panel {
-            width: 372px; /* Matches 180px + 12px gap + 180px coordinates */
+            width: 372px;
             box-sizing: border-box;
-            background-color: #d1d5db !important; /* Solid light grey */
+            background-color: #d1d5db !important;
             border: none;
             border-radius: 0;
             padding: 12px 18px 14px 18px;
@@ -193,7 +193,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- BXP -->
+            <!-- BXP (Net Session Balance) -->
             <div class="stat-row bxp">
                 <span class="stat-label">BXP</span>
                 <span class="stat-value" id="val-bxp">0</span>
@@ -231,7 +231,7 @@
         const JOB_EXP_KEY = "exp_train_train";
         const JOB_BXP_KEY = "exp_token_a|train|train";
 
-        // Compact number formatter: converts numbers to k, m, b, t starting at 20,000
+        // Compact number formatter: preserves negative signs and formats k, m, b, t
         function formatCompact(num) {
             const isNegative = num < 0;
             const abs = Math.abs(num);
@@ -290,11 +290,12 @@
         let gainedXp = 0;
         let stopCount = 0;
 
+        // Net BXP Tracking
         let startBxp = null;
         let currentBxp = 0;
-        let gainedBxp = 0;
+        let netBxp = 0;
 
-        let initialWallet = null;
+        // Cumulative positive Money tracking
         let lastWallet = null;
         let totalCashEarned = 0;
 
@@ -317,16 +318,15 @@
 
             // Re-anchor baselines to latest readouts
             if (currentXp > 0) startXp = currentXp;
-            if (currentBxp !== 0) startBxp = currentBxp;
-            if (lastWallet !== null) initialWallet = lastWallet;
+            if (currentBxp !== null) startBxp = currentBxp;
 
             // Reset deltas
             gainedXp = 0;
-            gainedBxp = 0;
-            stopCount = 0;
+            netBxp = 0;
             totalCashEarned = 0;
+            stopCount = 0;
 
-            // Defer timer until the next stop
+            // Defer timer until the next completed stop
             sessionStartTime = null;
             elTimer.textContent = "00:00:00";
 
@@ -340,7 +340,7 @@
             elMoney.textContent = "0";
             elMoneyRate.textContent = "0/h";
 
-            // Strip browser focus and tell FiveM/Tycoon to return input control to the game
+            // Strip browser focus and return control to the game
             btnReset.blur();
             if (document.activeElement) document.activeElement.blur();
             window.focus();
@@ -392,7 +392,7 @@
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Targeted polling and cache pull
+        // Targeted polling with dedicated inventory request
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -408,7 +408,7 @@
                 });
                 sendTycoon({ type: "getData" });
             } catch (e) {}
-        }, 1200);
+        }, 1000);
 
         // Clock & Hourly Rates Loop
         function updateHourlyRatesAndTimer() {
@@ -430,8 +430,8 @@
             const xpHour = gainedXp / elapsedHours;
             elXpRate.textContent = formatCompact(xpHour) + "/h";
 
-            // BXP/h
-            const bxpHour = gainedBxp / elapsedHours;
+            // BXP/h (reflects net hourly shift, e.g. -400/h or 600/h)
+            const bxpHour = netBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
             // Stops/h
@@ -470,21 +470,18 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned
+            // 2. Cash Earned (Cumulative positive gains only)
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
-                if (initialWallet === null) {
-                    initialWallet = currentWallet;
-                    lastWallet = currentWallet;
-                } else {
+                if (lastWallet !== null) {
                     const delta = currentWallet - lastWallet;
                     if (delta > 0) {
                         totalCashEarned += delta;
                         elMoney.textContent = formatCompact(totalCashEarned);
                         updateHourlyRatesAndTimer();
                     }
-                    lastWallet = currentWallet;
                 }
+                lastWallet = currentWallet;
             }
 
             // 3. XP & Stop Counting (Starts timer on stop 1)
@@ -498,7 +495,6 @@
                     currentXp = rawXp;
                     elStops.textContent = String(stopCount);
 
-                    // Start session clock on the very first completed stop
                     if (sessionStartTime === null) {
                         sessionStartTime = Date.now();
                     }
@@ -511,12 +507,12 @@
                 }
             }
 
-            // 4. BXP Tokens
+            // 4. BXP Tokens (Net Balance Tracking: Gain 200, Spend 1000 -> -800)
             let rawBxp = payload[JOB_BXP_KEY];
             if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
                 try {
                     let inv = (typeof payload.inventory === 'string') ? JSON.parse(payload.inventory) : payload.inventory;
-                    if (inv && inv[JOB_BXP_KEY]) {
+                    if (inv && inv[JOB_BXP_KEY] !== undefined) {
                         rawBxp = inv[JOB_BXP_KEY];
                     }
                 } catch (e) {}
@@ -525,14 +521,16 @@
             if (rawBxp !== undefined && rawBxp !== null) {
                 let bxpNum = (typeof rawBxp === 'object') ? Number(rawBxp.amount) : Number(rawBxp);
                 if (!isNaN(bxpNum)) {
+                    currentBxp = bxpNum;
+
+                    // Establish true initial baseline token balance
                     if (startBxp === null) {
                         startBxp = bxpNum;
-                        currentBxp = bxpNum;
-                    } else {
-                        currentBxp = bxpNum;
                     }
-                    gainedBxp = currentBxp - startBxp;
-                    elBxp.textContent = formatCompact(gainedBxp);
+
+                    // Net balance calculation
+                    netBxp = currentBxp - startBxp;
+                    elBxp.textContent = formatCompact(netBxp);
                     updateHourlyRatesAndTimer();
                 }
             }
