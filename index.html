@@ -74,6 +74,8 @@
             border-radius: 3px;
             cursor: pointer;
             pointer-events: auto;
+            outline: none;
+            user-select: none;
             transition: background 0.15s ease, color 0.15s ease;
         }
 
@@ -175,7 +177,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <button class="btn-reset" id="btn-reset" title="Reset current session telemetry">RESET</button>
+                <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
 
             <!-- XP -->
@@ -290,8 +292,21 @@
         let lastWallet = null;
         let totalCashEarned = 0;
 
-        // Reset Handler
+        function sendTycoon(payload) {
+            window.postMessage(payload, "*");
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage(payload, "*");
+            }
+        }
+
+        // Prevent focus locking on mousedown
+        btnReset.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+        });
+
+        // Reset Handler with aggressive focus-release and re-pin
         btnReset.addEventListener('click', (e) => {
+            e.preventDefault();
             e.stopPropagation();
 
             // Re-anchor baselines to latest readouts
@@ -316,6 +331,21 @@
             elStops.textContent = "0";
             elMoney.textContent = "0";
             elMoneyRate.textContent = "0/h";
+
+            // Strip browser focus and tell FiveM/Tycoon to return input control to the game
+            btnReset.blur();
+            if (document.activeElement) document.activeElement.blur();
+            window.focus();
+            sendTycoon({ type: "pin" });
+        });
+
+        // Universal Escape recovery: releases CEF focus lock and pins app
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                if (document.activeElement) document.activeElement.blur();
+                window.focus();
+                sendTycoon({ type: 'pin' });
+            }
         });
 
         // Strict 1-bit binary rasterizer for CV templates
@@ -348,14 +378,7 @@
         renderBinarizedText(ctxX, canvasX, "10000");
         renderBinarizedText(ctxY, canvasY, "10000");
 
-        function sendTycoon(payload) {
-            window.postMessage(payload, "*");
-            if (window.parent && window.parent !== window) {
-                window.parent.postMessage(payload, "*");
-            }
-        }
-
-        // Handshake
+        // Initial handshake
         setTimeout(() => {
             sendTycoon({ type: "pin" });
             sendTycoon({ type: "getData" });
@@ -393,7 +416,7 @@
             const bxpHour = gainedBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
-            // Money/h
+            // Money/h (raw compact value without $ or +)
             const moneyHour = totalCashEarned / elapsedHours;
             elMoneyRate.textContent = formatCompact(moneyHour) + "/h";
         }
@@ -413,7 +436,7 @@
                 hudEl.style.display = payload.hidden ? 'none' : 'flex';
             }
 
-            // Start session clock on the first received data frame
+            // Start session clock on first received data frame
             if (!sessionStartTime && (payload.pos_x !== undefined || payload[JOB_EXP_KEY] !== undefined || payload.wallet !== undefined)) {
                 sessionStartTime = Date.now();
             }
@@ -447,7 +470,7 @@
                 }
             }
 
-            // 3. XP & Stop Counting
+            // 3. XP & Stop Counting (Zero false-start stops)
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
