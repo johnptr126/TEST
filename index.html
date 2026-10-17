@@ -54,7 +54,7 @@
             pointer-events: auto;
         }
 
-        /* Top Header Row for Controls and Timer */
+        /* Top Header Row: [Version (Left)] --- [Timer (Center)] --- [Reset (Right)] */
         .stats-header {
             display: flex;
             justify-content: space-between;
@@ -63,12 +63,22 @@
             margin-bottom: -4px;
         }
 
+        .app-version {
+            font-family: "Consolas", monospace;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #6b7280;
+            text-transform: uppercase;
+        }
+
         .session-timer {
             font-family: "Consolas", monospace;
             font-size: 13px;
             font-weight: 700;
             letter-spacing: 1px;
             color: #374151;
+            text-align: center;
         }
 
         .btn-reset {
@@ -181,6 +191,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
+                <span class="app-version">v22</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -430,7 +441,7 @@
             const xpHour = gainedXp / elapsedHours;
             elXpRate.textContent = formatCompact(xpHour) + "/h";
 
-            // BXP/h (reflects net hourly shift, e.g. -400/h or 600/h)
+            // BXP/h
             const bxpHour = netBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour) + "/h";
 
@@ -523,12 +534,10 @@
                 if (!isNaN(bxpNum)) {
                     currentBxp = bxpNum;
 
-                    // Establish true initial baseline token balance
                     if (startBxp === null) {
                         startBxp = bxpNum;
                     }
 
-                    // Net balance calculation
                     netBxp = currentBxp - startBxp;
                     elBxp.textContent = formatCompact(netBxp);
                     updateHourlyRatesAndTimer();
