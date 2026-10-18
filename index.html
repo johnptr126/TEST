@@ -213,7 +213,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v26</span>
+                <span class="app-version">v27</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -233,7 +233,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- BXP (Session Net Change) -->
+            <!-- BXP (Session Net Change: filtered for sales > 1000) -->
             <div class="stat-row bxp">
                 <span class="stat-label">BXP</span>
                 <span class="stat-value" id="val-bxp">0</span>
@@ -282,8 +282,11 @@
         // Stop payout bracket & anti-double-count debounce window
         const STOP_MIN_PAYOUT = 100000;  // Minimum 100k
         const STOP_MAX_PAYOUT = 5000000; // Ignore if above 5m
-        const STOP_DEBOUNCE_MS = 5000;  // 5 seconds cooldown between registered stops
+        const STOP_DEBOUNCE_MS = 5000;   // 5s cooldown between registered stops
         let lastStopTimestamp = 0;
+
+        // BXP Spend Filter: Ignore manual sales/withdrawals above 1000
+        const MAX_JOB_BXP_SPEND = 1000;
 
         // Robust compact number formatter
         function formatCompact(num) {
@@ -347,10 +350,9 @@
         let gainedXp = 0;
         let stopCount = 0;
 
-        // BXP Tracking
-        let startBxp = null;
-        let currentBxp = 0;
-        let netBxp = 0;
+        // BXP Tracking (Filtered for manual bulk sales)
+        let lastBxp = null;
+        let sessionBxp = 0;
 
         // Cumulative Money tracking
         let lastWallet = null;
@@ -375,11 +377,10 @@
 
             // Re-anchor baselines
             if (currentXp > 0) startXp = currentXp;
-            if (currentBxp !== null) startBxp = currentBxp;
 
             // Reset deltas
             gainedXp = 0;
-            netBxp = 0;
+            sessionBxp = 0;
             totalCashEarned = 0;
             stopCount = 0;
             lastStopTimestamp = 0;
@@ -489,7 +490,7 @@
             elXpRate.textContent = formatCompact(xpHour);
 
             // BXP/H
-            const bxpHour = netBxp / elapsedHours;
+            const bxpHour = sessionBxp / elapsedHours;
             elBxpRate.textContent = formatCompact(bxpHour);
 
             // Stops/H
@@ -538,7 +539,6 @@
                         elMoney.textContent = formatCompact(totalCashEarned);
 
                         const now = Date.now();
-                        // Only count as a stop if between 100k and 5m AND at least 5s has passed since the last stop
                         if (delta >= STOP_MIN_PAYOUT && delta <= STOP_MAX_PAYOUT) {
                             if (now - lastStopTimestamp >= STOP_DEBOUNCE_MS) {
                                 stopCount++;
@@ -573,7 +573,7 @@
                 }
             }
 
-            // 4. BXP Tokens (Total Inventory Count & Net Session Change)
+            // 4. BXP Tokens (Ignore sales/withdrawals > 1000)
             let rawBxp = payload[JOB_BXP_KEY];
             if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
                 try {
@@ -587,17 +587,30 @@
             if (rawBxp !== undefined && rawBxp !== null) {
                 let bxpNum = (typeof rawBxp === 'object') ? Number(rawBxp.amount) : Number(rawBxp);
                 if (!isNaN(bxpNum)) {
-                    currentBxp = bxpNum;
+                    // Update true total in inventory
+                    elTotalBxp.textContent = formatCompact(bxpNum);
 
-                    elTotalBxp.textContent = formatCompact(currentBxp);
+                    if (lastBxp !== null) {
+                        const delta = bxpNum - lastBxp;
 
-                    if (startBxp === null) {
-                        startBxp = bxpNum;
+                        if (delta > 0) {
+                            // Positive tokens earned (e.g. +200 from stop)
+                            sessionBxp += delta;
+                            elBxp.textContent = formatCompact(sessionBxp);
+                            updateHourlyRatesAndTimer();
+                        } else if (delta < 0) {
+                            const spentAmount = Math.abs(delta);
+                            // Only count legitimate in-game job usage (<= 1000)
+                            // Ignore bulk token sales (> 1000)
+                            if (spentAmount <= MAX_JOB_BXP_SPEND) {
+                                sessionBxp += delta; // subtracts up to 1000
+                                elBxp.textContent = formatCompact(sessionBxp);
+                                updateHourlyRatesAndTimer();
+                            }
+                        }
                     }
 
-                    netBxp = currentBxp - startBxp;
-                    elBxp.textContent = formatCompact(netBxp);
-                    updateHourlyRatesAndTimer();
+                    lastBxp = bxpNum;
                 }
             }
         });
