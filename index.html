@@ -50,7 +50,7 @@
             padding: 12px 18px 14px 18px;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             pointer-events: auto;
         }
 
@@ -60,7 +60,7 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            margin-bottom: -4px;
+            margin-bottom: 2px;
         }
 
         .app-version {
@@ -107,7 +107,27 @@
             transform: scale(0.96);
         }
 
-        /* 3-Column horizontal row: [Label (Left)] --- [Session Value (Center)] --- [/h Rate (Right)] */
+        /* Column Labels Sub-Header */
+        .columns-header {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            font-family: "Consolas", monospace;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: #4b5563;
+            text-transform: uppercase;
+            border-bottom: 1px solid #9ca3af;
+            padding-bottom: 4px;
+            margin-bottom: 2px;
+        }
+
+        .col-h-left { width: 95px; flex-shrink: 0; }
+        .col-h-mid { flex: 1; text-align: center; }
+        .col-h-right { width: 100px; flex-shrink: 0; text-align: right; }
+
+        /* 3-Column horizontal row: [Label (Left)] --- [Session Value (Center)] --- [/H Rate (Right)] */
         .stat-row {
             display: flex;
             align-items: baseline;
@@ -115,11 +135,11 @@
         }
 
         .stat-label {
-            width: 75px;
+            width: 95px;
             flex-shrink: 0;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 800;
-            letter-spacing: 1.5px;
+            letter-spacing: 1px;
             text-transform: uppercase;
             color: #1f2937;
         }
@@ -129,18 +149,18 @@
             flex: 1;
             text-align: center;
             font-family: "Consolas", monospace;
-            font-size: 22px;
+            font-size: 21px;
             font-weight: 700;
             letter-spacing: 0.5px;
         }
 
-        /* /h value on the right */
+        /* /H rate value on the right (no trailing /h text) */
         .stat-rate {
-            width: 130px;
+            width: 100px;
             flex-shrink: 0;
             text-align: right;
             font-family: "Consolas", monospace;
-            font-size: 22px;
+            font-size: 21px;
             font-weight: 700;
             letter-spacing: 0.5px;
             color: #111827;
@@ -149,6 +169,7 @@
         /* Value text colors on light grey background */
         .stat-row.xp .stat-value { color: #1d4ed8; }
         .stat-row.bxp .stat-value { color: #7e22ce; }
+        .stat-row.total-bxp .stat-value { color: #6b21a8; }
         .stat-row.stops .stat-value { color: #b45309; }
         .stat-row.money .stat-value { color: #15803d; }
 
@@ -191,24 +212,39 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v23</span>
+                <span class="app-version">v24</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
+            </div>
+
+            <!-- Column Titles: METRIC | SESSION | /H -->
+            <div class="columns-header">
+                <span class="col-h-left">METRIC</span>
+                <span class="col-h-mid">SESSION</span>
+                <span class="col-h-right">/H</span>
             </div>
 
             <!-- XP -->
             <div class="stat-row xp">
                 <span class="stat-label">XP</span>
                 <span class="stat-value" id="val-xp">0</span>
-                <span class="stat-rate" id="rate-xp">0/h</span>
+                <span class="stat-rate" id="rate-xp">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- BXP (Net Session Balance) -->
+            <!-- BXP (Session Net Change) -->
             <div class="stat-row bxp">
                 <span class="stat-label">BXP</span>
                 <span class="stat-value" id="val-bxp">0</span>
-                <span class="stat-rate" id="rate-bxp">0/h</span>
+                <span class="stat-rate" id="rate-bxp">0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- TOTAL BXP (Unused tokens in inventory) -->
+            <div class="stat-row total-bxp">
+                <span class="stat-label">TOTAL BXP</span>
+                <span class="stat-value" id="val-total-bxp">0</span>
+                <span class="stat-rate" style="color: #6b7280;">-</span>
             </div>
             <div class="stat-row-divider"></div>
 
@@ -216,13 +252,13 @@
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
                 <span class="stat-value" id="val-stops">0</span>
-                <span class="stat-rate" id="rate-stops">0/h</span>
+                <span class="stat-rate" id="rate-stops">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
             <!-- $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
-                <span class="stat-rate" id="rate-money">0/h</span>
+                <span class="stat-rate" id="rate-money">0</span>
             </div>
         </div>
 
@@ -243,13 +279,14 @@
         const JOB_BXP_KEY = "exp_token_a|train|train";
         const STOP_MONEY_THRESHOLD = 100000; // >= 100k counts as 1 stop
 
-        // Compact number formatter: preserves negative signs and formats k, m, b, t
+        // Robust compact number formatter (No skipping/flipping between small and large values)
         function formatCompact(num) {
+            if (num === null || num === undefined || isNaN(num)) return "0";
             const isNegative = num < 0;
             const abs = Math.abs(num);
 
             if (abs < 20000) {
-                return (isNegative ? "-" : "") + Math.round(abs);
+                return (isNegative ? "-" : "") + Math.round(abs).toString();
             }
 
             const tiers = [
@@ -259,16 +296,17 @@
                 { limit: 1e3,  suffix: 'k' }
             ];
 
-            for (const tier of tiers) {
+            for (let i = 0; i < tiers.length; i++) {
+                const tier = tiers[i];
                 if (abs >= tier.limit) {
                     const scaled = abs / tier.limit;
                     let formatted = scaled >= 100 ? scaled.toFixed(0) : (scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2));
-                    formatted = formatted.replace(/\.?0+$/, "");
+                    formatted = parseFloat(formatted).toString(); // Safely removes trailing zeroes without regex clipping
                     return (isNegative ? "-" : "") + formatted + tier.suffix;
                 }
             }
 
-            return (isNegative ? "-" : "") + Math.round(abs);
+            return (isNegative ? "-" : "") + Math.round(abs).toString();
         }
 
         // Canvases
@@ -284,6 +322,7 @@
 
         const elBxp = document.getElementById('val-bxp');
         const elBxpRate = document.getElementById('rate-bxp');
+        const elTotalBxp = document.getElementById('val-total-bxp');
 
         const elStops = document.getElementById('val-stops');
         const elStopsRate = document.getElementById('rate-stops');
@@ -302,7 +341,7 @@
         let gainedXp = 0;
         let stopCount = 0;
 
-        // Net BXP Tracking
+        // BXP Tracking
         let startBxp = null;
         let currentBxp = 0;
         let netBxp = 0;
@@ -338,19 +377,19 @@
             totalCashEarned = 0;
             stopCount = 0;
 
-            // Defer timer until the next stop
+            // Defer timer until next stop
             sessionStartTime = null;
             elTimer.textContent = "00:00:00";
 
             // Reset DOM displays
             elXp.textContent = "0";
-            elXpRate.textContent = "0/h";
+            elXpRate.textContent = "0";
             elBxp.textContent = "0";
-            elBxpRate.textContent = "0/h";
+            elBxpRate.textContent = "0";
             elStops.textContent = "0";
-            elStopsRate.textContent = "0/h";
+            elStopsRate.textContent = "0";
             elMoney.textContent = "0";
-            elMoneyRate.textContent = "0/h";
+            elMoneyRate.textContent = "0";
 
             // Strip browser focus and return control to the game
             btnReset.blur();
@@ -438,21 +477,21 @@
             const elapsedHours = elapsedMs / 3600000;
             if (elapsedHours <= 0) return;
 
-            // XP/h
+            // XP/H
             const xpHour = gainedXp / elapsedHours;
-            elXpRate.textContent = formatCompact(xpHour) + "/h";
+            elXpRate.textContent = formatCompact(xpHour);
 
-            // BXP/h
+            // BXP/H
             const bxpHour = netBxp / elapsedHours;
-            elBxpRate.textContent = formatCompact(bxpHour) + "/h";
+            elBxpRate.textContent = formatCompact(bxpHour);
 
-            // Stops/h
+            // Stops/H
             const stopsHour = Math.round(stopCount / elapsedHours);
-            elStopsRate.textContent = stopsHour + "/h";
+            elStopsRate.textContent = formatCompact(stopsHour);
 
-            // Money/h
+            // Money/H
             const moneyHour = totalCashEarned / elapsedHours;
-            elMoneyRate.textContent = formatCompact(moneyHour) + "/h";
+            elMoneyRate.textContent = formatCompact(moneyHour);
         }
         setInterval(updateHourlyRatesAndTimer, 1000);
 
@@ -507,7 +546,7 @@
                 lastWallet = currentWallet;
             }
 
-            // 3. XP Tracking (Accumulates gained XP smoothly)
+            // 3. XP Tracking
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
@@ -523,7 +562,7 @@
                 }
             }
 
-            // 4. BXP Tokens (Net Balance Tracking)
+            // 4. BXP Tokens (Both Total Inventory Count & Net Session Change)
             let rawBxp = payload[JOB_BXP_KEY];
             if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
                 try {
@@ -539,10 +578,14 @@
                 if (!isNaN(bxpNum)) {
                     currentBxp = bxpNum;
 
+                    // Display total unused tokens sitting in inventory
+                    elTotalBxp.textContent = formatCompact(currentBxp);
+
                     if (startBxp === null) {
                         startBxp = bxpNum;
                     }
 
+                    // Net session change
                     netBxp = currentBxp - startBxp;
                     elBxp.textContent = formatCompact(netBxp);
                     updateHourlyRatesAndTimer();
