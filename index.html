@@ -36,7 +36,7 @@
             left: 24px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             align-items: flex-start;
         }
 
@@ -47,14 +47,14 @@
             background-color: rgb(80, 80, 80) !important;
             border: none;
             border-radius: 0;
-            padding: 12px 18px 14px 18px;
+            padding: 10px 16px 12px 16px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 5px;
             pointer-events: auto;
         }
 
-        /* Top Header Row: [Version (Left)] --- [Timer (Center)] --- [Reset (Right)] */
+        /* Top Header Row */
         .stats-header {
             display: flex;
             justify-content: space-between;
@@ -114,21 +114,21 @@
             align-items: center;
             width: 100%;
             font-family: "Consolas", monospace;
-            font-size: 11px;
+            font-size: 10px;
             font-weight: 800;
             letter-spacing: 1px;
             color: #9ca3af;
             text-transform: uppercase;
             border-bottom: 1px solid #6b7280;
-            padding-bottom: 4px;
+            padding-bottom: 3px;
             margin-bottom: 2px;
         }
 
-        .col-h-left { width: 95px; flex-shrink: 0; }
+        .col-h-left { width: 115px; flex-shrink: 0; }
         .col-h-mid { flex: 1; text-align: center; }
-        .col-h-right { width: 100px; flex-shrink: 0; text-align: right; }
+        .col-h-right { width: 85px; flex-shrink: 0; text-align: right; }
 
-        /* 3-Column horizontal row: [Label (Left)] --- [Session Value (Center)] --- [/H Rate (Right)] */
+        /* 3-Column horizontal rows */
         .stat-row {
             display: flex;
             align-items: baseline;
@@ -136,48 +136,58 @@
         }
 
         .stat-label {
-            width: 95px;
+            width: 115px;
             flex-shrink: 0;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             text-transform: uppercase;
             color: #e5e7eb;
         }
 
-        /* Current session total centered */
         .stat-value {
             flex: 1;
             text-align: center;
             font-family: "Consolas", monospace;
-            font-size: 21px;
+            font-size: 18px;
             font-weight: 700;
             letter-spacing: 0.5px;
         }
 
-        /* /H rate value on the right */
         .stat-rate {
-            width: 100px;
+            width: 85px;
             flex-shrink: 0;
             text-align: right;
             font-family: "Consolas", monospace;
-            font-size: 21px;
+            font-size: 18px;
             font-weight: 700;
             letter-spacing: 0.5px;
             color: #f3f4f6;
         }
 
-        /* Colors */
+        /* Specific row accent styling */
         .stat-row.xp .stat-value { color: #60a5fa; }
         .stat-row.bxp .stat-value { color: #c084fc; }
+        .stat-row.bxp-profit .stat-value { color: #a855f7; }
+        .stat-row.pxp .stat-value { color: #38bdf8; }
+        .stat-row.pbxp .stat-value { color: #e879f9; }
+        .stat-row.pbxp-profit .stat-value { color: #d946ef; }
         .stat-row.total-bxp .stat-value { color: #d8b4fe; }
         .stat-row.stops .stat-value { color: #fbbf24; }
         .stat-row.money .stat-value { color: #4ade80; }
+        .stat-row.total-bxp-money .stat-value { color: #34d399; }
+        .stat-row.grand-total .stat-value { color: #22c55e; }
 
         .stat-row-divider {
             width: 100%;
             height: 1px;
             background: #6b7280;
+            margin: 1px 0;
+        }
+
+        .stat-row-divider.thick {
+            background: #9ca3af;
+            height: 2px;
         }
 
         /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes - Untouched) --- */
@@ -213,7 +223,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v27</span>
+                <span class="app-version">v28</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -225,23 +235,55 @@
                 <span class="col-h-right">/H</span>
             </div>
 
-            <!-- XP -->
+            <!-- 1. TRAIN XP -->
             <div class="stat-row xp">
-                <span class="stat-label">XP</span>
+                <span class="stat-label">TRAIN XP</span>
                 <span class="stat-value" id="val-xp">0</span>
                 <span class="stat-rate" id="rate-xp">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- BXP (Session Net Change: filtered for sales > 1000) -->
+            <!-- 2. TRAIN BXP -->
             <div class="stat-row bxp">
-                <span class="stat-label">BXP</span>
+                <span class="stat-label">TRAIN BXP</span>
                 <span class="stat-value" id="val-bxp">0</span>
                 <span class="stat-rate" id="rate-bxp">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- TOTAL BXP (Unused tokens in inventory) -->
+            <!-- 3. T-BXP PROFIT ($850 ea) -->
+            <div class="stat-row bxp-profit">
+                <span class="stat-label">T-BXP PROFIT</span>
+                <span class="stat-value" id="val-tbxp-profit">0</span>
+                <span class="stat-rate" id="rate-tbxp-profit">0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 4. PLAYER XP -->
+            <div class="stat-row pxp">
+                <span class="stat-label">PLAYER XP</span>
+                <span class="stat-value" id="val-pxp">0</span>
+                <span class="stat-rate" id="rate-pxp">0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 5. PLAYER BXP -->
+            <div class="stat-row pbxp">
+                <span class="stat-label">PLAYER BXP</span>
+                <span class="stat-value" id="val-pbxp">0</span>
+                <span class="stat-rate" id="rate-pbxp">0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 6. P-BXP PROFIT ($425 ea) -->
+            <div class="stat-row pbxp-profit">
+                <span class="stat-label">P-BXP PROFIT</span>
+                <span class="stat-value" id="val-pbxp-profit">0</span>
+                <span class="stat-rate" id="rate-pbxp-profit">0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 7. TOTAL BXP (In Inv) -->
             <div class="stat-row total-bxp">
                 <span class="stat-label">TOTAL BXP</span>
                 <span class="stat-value" id="val-total-bxp">0</span>
@@ -249,7 +291,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- STOPS (Counted by money: >= 100k and <= 5m) -->
+            <!-- 8. STOPS -->
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
                 <span class="stat-value" id="val-stops">0</span>
@@ -257,9 +299,17 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
+            <!-- 9. $$$ (Direct Drop Cash) --> <div class="stat-row money"> <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
                 <span class="stat-rate" id="rate-money">0</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 10. TOTAL BXP $ (Train BXP Profit + Player BXP Profit) -->
+            <div class="stat-row total-bxp-money">
+                <span class="stat-label">TOTAL BXP $</span> <span class="stat-value" id="val-total-bxp-money">0</span> <span class="stat-rate" id="rate-total-bxp-money">0</span> </div> <div class="stat-row-divider thick"></div>              <!-- 11. TOTAL $$$($$$ + Total BXP $) --> <div class="stat-row grand-total"> <span class="stat-label">TOTAL $$$</span>
+                <span class="stat-value" id="val-grand-total">0</span>
+                <span class="stat-rate" id="rate-grand-total">0</span>
             </div>
         </div>
 
@@ -276,17 +326,24 @@
 
     <script>
         const COORD_OFFSET = 10000;
+
+        // Telemetry Keys
         const JOB_EXP_KEY = "exp_train_train";
         const JOB_BXP_KEY = "exp_token_a|train|train";
+        const PLAYER_BXP_KEY = "exp_token_a|player|player";
 
         // Stop payout bracket & anti-double-count debounce window
-        const STOP_MIN_PAYOUT = 100000;  // Minimum 100k
-        const STOP_MAX_PAYOUT = 5000000; // Ignore if above 5m
-        const STOP_DEBOUNCE_MS = 5000;   // 5s cooldown between registered stops
+        const STOP_MIN_PAYOUT = 100000;
+        const STOP_MAX_PAYOUT = 5000000;
+        const STOP_DEBOUNCE_MS = 5000;
         let lastStopTimestamp = 0;
 
-        // BXP Spend Filter: Ignore manual sales/withdrawals above 1000
+        // BXP Spend filter (ignore bulk sales > 1000)
         const MAX_JOB_BXP_SPEND = 1000;
+
+        // Post-Tax Token Prices
+        const TRAIN_BXP_VAL = 850; // $1,000 - 15%
+        const PLAYER_BXP_VAL = 425; // $500 - 15%
 
         // Robust compact number formatter
         function formatCompact(num) {
@@ -326,18 +383,35 @@
 
         // Stats UI elements
         const elTimer = document.getElementById('session-timer');
+        
+        // Train XP / BXP
         const elXp = document.getElementById('val-xp');
         const elXpRate = document.getElementById('rate-xp');
-
         const elBxp = document.getElementById('val-bxp');
         const elBxpRate = document.getElementById('rate-bxp');
-        const elTotalBxp = document.getElementById('val-total-bxp');
+        const elTbxpProfit = document.getElementById('val-tbxp-profit');
+        const elTbxpProfitRate = document.getElementById('rate-tbxp-profit');
 
+        // Player XP / BXP
+        const elPxp = document.getElementById('val-pxp');
+        const elPxpRate = document.getElementById('rate-pxp');
+        const elPbxp = document.getElementById('val-pbxp');
+        const elPbxpRate = document.getElementById('rate-pbxp');
+        const elPbxpProfit = document.getElementById('val-pbxp-profit');
+        const elPbxpProfitRate = document.getElementById('rate-pbxp-profit');
+
+        // Inventory & Stops
+        const elTotalBxp = document.getElementById('val-total-bxp');
         const elStops = document.getElementById('val-stops');
         const elStopsRate = document.getElementById('rate-stops');
 
+        // Revenue
         const elMoney = document.getElementById('val-money');
         const elMoneyRate = document.getElementById('rate-money');
+        const elTotalBxpMoney = document.getElementById('val-total-bxp-money');
+        const elTotalBxpMoneyRate = document.getElementById('rate-total-bxp-money');
+        const elGrandTotal = document.getElementById('val-grand-total');
+        const elGrandTotalRate = document.getElementById('rate-grand-total');
 
         const btnReset = document.getElementById('btn-reset');
         const hudEl = document.getElementById('hud');
@@ -345,16 +419,26 @@
         // Session Tracking State
         let sessionStartTime = null;
 
+        // Train XP
         let startXp = null;
         let currentXp = 0;
         let gainedXp = 0;
-        let stopCount = 0;
 
-        // BXP Tracking (Filtered for manual bulk sales)
+        // Train BXP
         let lastBxp = null;
         let sessionBxp = 0;
 
-        // Cumulative Money tracking
+        // Player XP
+        let startPxp = null;
+        let currentPxp = 0;
+        let gainedPxp = 0;
+
+        // Player BXP
+        let lastPbxp = null;
+        let sessionPbxp = 0;
+
+        // Stops & Cash
+        let stopCount = 0;
         let lastWallet = null;
         let totalCashEarned = 0;
 
@@ -375,31 +459,26 @@
             e.preventDefault();
             e.stopPropagation();
 
-            // Re-anchor baselines
             if (currentXp > 0) startXp = currentXp;
+            if (currentPxp > 0) startPxp = currentPxp;
 
-            // Reset deltas
             gainedXp = 0;
             sessionBxp = 0;
+            gainedPxp = 0;
+            sessionPbxp = 0;
             totalCashEarned = 0;
             stopCount = 0;
             lastStopTimestamp = 0;
 
-            // Defer timer until next qualifying stop
             sessionStartTime = null;
             elTimer.textContent = "00:00:00";
 
-            // Reset DOM displays
-            elXp.textContent = "0";
-            elXpRate.textContent = "0";
-            elBxp.textContent = "0";
-            elBxpRate.textContent = "0";
-            elStops.textContent = "0";
-            elStopsRate.textContent = "0";
-            elMoney.textContent = "0";
-            elMoneyRate.textContent = "0";
+            // Zero DOM displays
+            [elXp, elXpRate, elBxp, elBxpRate, elTbxpProfit, elTbxpProfitRate,
+             elPxp, elPxpRate, elPbxp, elPbxpRate, elPbxpProfit, elPbxpProfitRate,
+             elStops, elStopsRate, elMoney, elMoneyRate, elTotalBxpMoney, 
+             elTotalBxpMoneyRate, elGrandTotal, elGrandTotalRate].forEach(el => el.textContent = "0");
 
-            // Strip browser focus and return control to the game
             btnReset.blur();
             if (document.activeElement) document.activeElement.blur();
             window.focus();
@@ -458,7 +537,10 @@
                     type: "getNamedData", 
                     keys: [
                         JOB_EXP_KEY, 
-                        JOB_BXP_KEY, 
+                        JOB_BXP_KEY,
+                        PLAYER_BXP_KEY,
+                        "exp_overall",
+                        "exp_physical_strength",
                         "inventory", 
                         "wallet", 
                         "pos_x", 
@@ -476,7 +558,6 @@
             const elapsedMs = Date.now() - sessionStartTime;
             const totalSec = Math.floor(elapsedMs / 1000);
 
-            // Format HH:MM:SS
             const hrs = String(Math.floor(totalSec / 3600)).padStart(2, '0');
             const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
             const secs = String(totalSec % 60).padStart(2, '0');
@@ -485,21 +566,26 @@
             const elapsedHours = elapsedMs / 3600000;
             if (elapsedHours <= 0) return;
 
-            // XP/H
-            const xpHour = gainedXp / elapsedHours;
-            elXpRate.textContent = formatCompact(xpHour);
+            // Train Rates
+            elXpRate.textContent = formatCompact(gainedXp / elapsedHours);
+            elBxpRate.textContent = formatCompact(sessionBxp / elapsedHours);
+            elTbxpProfitRate.textContent = formatCompact((sessionBxp * TRAIN_BXP_VAL) / elapsedHours);
 
-            // BXP/H
-            const bxpHour = sessionBxp / elapsedHours;
-            elBxpRate.textContent = formatCompact(bxpHour);
+            // Player Rates
+            elPxpRate.textContent = formatCompact(gainedPxp / elapsedHours);
+            elPbxpRate.textContent = formatCompact(sessionPbxp / elapsedHours);
+            elPbxpProfitRate.textContent = formatCompact((sessionPbxp * PLAYER_BXP_VAL) / elapsedHours);
 
-            // Stops/H
-            const stopsHour = Math.round(stopCount / elapsedHours);
-            elStopsRate.textContent = formatCompact(stopsHour);
+            // Stops Rate
+            elStopsRate.textContent = formatCompact(Math.round(stopCount / elapsedHours));
 
-            // Money/H
-            const moneyHour = totalCashEarned / elapsedHours;
-            elMoneyRate.textContent = formatCompact(moneyHour);
+            // Monetary Rates
+            const totalBxpProf = (sessionBxp * TRAIN_BXP_VAL) + (sessionPbxp * PLAYER_BXP_VAL);
+            const grandTotalProf = totalCashEarned + totalBxpProf;
+
+            elMoneyRate.textContent = formatCompact(totalCashEarned / elapsedHours);
+            elTotalBxpMoneyRate.textContent = formatCompact(totalBxpProf / elapsedHours);
+            elGrandTotalRate.textContent = formatCompact(grandTotalProf / elapsedHours);
         }
         setInterval(updateHourlyRatesAndTimer, 1000);
 
@@ -529,7 +615,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned & FILTERED STOP COUNTING (100k <= delta <= 5m with 5s debounce)
+            // 2. Cash Earned & Filtered Stop Counting
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (lastWallet !== null) {
@@ -551,13 +637,14 @@
                             }
                         }
 
+                        updateCombinedRevenue();
                         updateHourlyRatesAndTimer();
                     }
                 }
                 lastWallet = currentWallet;
             }
 
-            // 3. XP Tracking
+            // 3. Train XP
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
@@ -573,47 +660,96 @@
                 }
             }
 
-            // 4. BXP Tokens (Ignore sales/withdrawals > 1000)
-            let rawBxp = payload[JOB_BXP_KEY];
-            if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
+            // 4. Player XP (exp_overall or physical strength)
+            const rawPxp = payload.exp_overall !== undefined ? payload.exp_overall : payload.exp_physical_strength;
+            if (typeof rawPxp === 'number' && rawPxp > 0) {
+                if (startPxp === null) {
+                    startPxp = rawPxp;
+                    currentPxp = rawPxp;
+                } else if (rawPxp > currentPxp) {
+                    currentPxp = rawPxp;
+                    gainedPxp = currentPxp - startPxp;
+                    elPxp.textContent = formatCompact(gainedPxp);
+                    updateHourlyRatesAndTimer();
+                } else if (rawPxp < currentPxp) {
+                    currentPxp = rawPxp;
+                }
+            }
+
+            // Parse Inventory Blob for Tokens
+            let inv = null;
+            if (payload.inventory) {
                 try {
-                    let inv = (typeof payload.inventory === 'string') ? JSON.parse(payload.inventory) : payload.inventory;
-                    if (inv && inv[JOB_BXP_KEY] !== undefined) {
-                        rawBxp = inv[JOB_BXP_KEY];
-                    }
+                    inv = (typeof payload.inventory === 'string') ? JSON.parse(payload.inventory) : payload.inventory;
                 } catch (e) {}
+            }
+
+            // 5. Train BXP Tokens
+            let rawBxp = payload[JOB_BXP_KEY];
+            if ((rawBxp === undefined || rawBxp === null) && inv && inv[JOB_BXP_KEY] !== undefined) {
+                rawBxp = inv[JOB_BXP_KEY];
             }
 
             if (rawBxp !== undefined && rawBxp !== null) {
                 let bxpNum = (typeof rawBxp === 'object') ? Number(rawBxp.amount) : Number(rawBxp);
                 if (!isNaN(bxpNum)) {
-                    // Update true total in inventory
                     elTotalBxp.textContent = formatCompact(bxpNum);
 
                     if (lastBxp !== null) {
                         const delta = bxpNum - lastBxp;
-
                         if (delta > 0) {
-                            // Positive tokens earned (e.g. +200 from stop)
                             sessionBxp += delta;
-                            elBxp.textContent = formatCompact(sessionBxp);
-                            updateHourlyRatesAndTimer();
-                        } else if (delta < 0) {
-                            const spentAmount = Math.abs(delta);
-                            // Only count legitimate in-game job usage (<= 1000)
-                            // Ignore bulk token sales (> 1000)
-                            if (spentAmount <= MAX_JOB_BXP_SPEND) {
-                                sessionBxp += delta; // subtracts up to 1000
-                                elBxp.textContent = formatCompact(sessionBxp);
-                                updateHourlyRatesAndTimer();
-                            }
+                        } else if (delta < 0 && Math.abs(delta) <= MAX_JOB_BXP_SPEND) {
+                            sessionBxp += delta;
                         }
+                        elBxp.textContent = formatCompact(sessionBxp);
+                        elTbxpProfit.textContent = formatCompact(sessionBxp * TRAIN_BXP_VAL);
+                        updateCombinedRevenue();
+                        updateHourlyRatesAndTimer();
                     }
-
                     lastBxp = bxpNum;
                 }
             }
+
+            // 6. Player BXP Tokens
+            let rawPbxp = payload[PLAYER_BXP_KEY];
+            if ((rawPbxp === undefined || rawPbxp === null) && inv) {
+                if (inv[PLAYER_BXP_KEY] !== undefined) {
+                    rawPbxp = inv[PLAYER_BXP_KEY];
+                } else if (inv["exp_token_a|physical|physical"] !== undefined) {
+                    rawPbxp = inv["exp_token_a|physical|physical"];
+                }
+            }
+
+            if (rawPbxp !== undefined && rawPbxp !== null) {
+                let pbxpNum = (typeof rawPbxp === 'object') ? Number(rawPbxp.amount) : Number(rawPbxp);
+                if (!isNaN(pbxpNum)) {
+                    if (lastPbxp !== null) {
+                        const delta = pbxpNum - lastPbxp;
+                        if (delta > 0) {
+                            sessionPbxp += delta;
+                        } else if (delta < 0 && Math.abs(delta) <= MAX_JOB_BXP_SPEND) {
+                            sessionPbxp += delta;
+                        }
+                        elPbxp.textContent = formatCompact(sessionPbxp);
+                        elPbxpProfit.textContent = formatCompact(sessionPbxp * PLAYER_BXP_VAL);
+                        updateCombinedRevenue();
+                        updateHourlyRatesAndTimer();
+                    }
+                    lastPbxp = pbxpNum;
+                }
+            }
         });
+
+        function updateCombinedRevenue() {
+            const trainProfit = sessionBxp * TRAIN_BXP_VAL;
+            const playerProfit = sessionPbxp * PLAYER_BXP_VAL;
+            const totalBxpProf = trainProfit + playerProfit;
+            const grandTotal = totalCashEarned + totalBxpProf;
+
+            elTotalBxpMoney.textContent = formatCompact(totalBxpProf);
+            elGrandTotal.textContent = formatCompact(grandTotal);
+        }
     </script>
 </body>
 </html>
