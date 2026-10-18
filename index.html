@@ -40,11 +40,11 @@
             align-items: flex-start;
         }
 
-        /* --- VERTICALLY STACKED STATS (Light Grey, 3-Column Horizontal Layout) --- */
+        /* --- STATS PANEL (rgb(80, 80, 80) Dark Slate Grey) --- */
         .stats-panel {
             width: 372px;
             box-sizing: border-box;
-            background-color: #d1d5db !important;
+            background-color: rgb(80, 80, 80) !important;
             border: none;
             border-radius: 0;
             padding: 12px 18px 14px 18px;
@@ -68,7 +68,7 @@
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 1px;
-            color: #6b7280;
+            color: #9ca3af;
             text-transform: uppercase;
         }
 
@@ -77,14 +77,14 @@
             font-size: 13px;
             font-weight: 700;
             letter-spacing: 1px;
-            color: #374151;
+            color: #f3f4f6;
             text-align: center;
         }
 
         .btn-reset {
-            background: #9ca3af;
-            border: none;
-            color: #111827;
+            background: #4b5563;
+            border: 1px solid #6b7280;
+            color: #f9fafb;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-size: 10px;
             font-weight: 800;
@@ -100,6 +100,7 @@
 
         .btn-reset:hover {
             background: #ef4444;
+            border-color: #dc2626;
             color: #ffffff;
         }
 
@@ -116,9 +117,9 @@
             font-size: 11px;
             font-weight: 800;
             letter-spacing: 1px;
-            color: #4b5563;
+            color: #9ca3af;
             text-transform: uppercase;
-            border-bottom: 1px solid #9ca3af;
+            border-bottom: 1px solid #6b7280;
             padding-bottom: 4px;
             margin-bottom: 2px;
         }
@@ -141,7 +142,7 @@
             font-weight: 800;
             letter-spacing: 1px;
             text-transform: uppercase;
-            color: #1f2937;
+            color: #e5e7eb;
         }
 
         /* Current session total centered */
@@ -154,7 +155,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* /H rate value on the right (no trailing /h text) */
+        /* /H rate value on the right */
         .stat-rate {
             width: 100px;
             flex-shrink: 0;
@@ -163,20 +164,20 @@
             font-size: 21px;
             font-weight: 700;
             letter-spacing: 0.5px;
-            color: #111827;
+            color: #f3f4f6;
         }
 
-        /* Value text colors on light grey background */
-        .stat-row.xp .stat-value { color: #1d4ed8; }
-        .stat-row.bxp .stat-value { color: #7e22ce; }
-        .stat-row.total-bxp .stat-value { color: #6b21a8; }
-        .stat-row.stops .stat-value { color: #b45309; }
-        .stat-row.money .stat-value { color: #15803d; }
+        /* High-contrast colors tuned for rgb(80, 80, 80) */
+        .stat-row.xp .stat-value { color: #60a5fa; }
+        .stat-row.bxp .stat-value { color: #c084fc; }
+        .stat-row.total-bxp .stat-value { color: #d8b4fe; }
+        .stat-row.stops .stat-value { color: #fbbf24; }
+        .stat-row.money .stat-value { color: #4ade80; }
 
         .stat-row-divider {
             width: 100%;
             height: 1px;
-            background: #9ca3af;
+            background: #6b7280;
         }
 
         /* --- RAW 1-BIT CV COORDINATES (Bottom Boxes - Untouched) --- */
@@ -212,7 +213,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v24</span>
+                <span class="app-version">v25</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -244,7 +245,7 @@
             <div class="stat-row total-bxp">
                 <span class="stat-label">TOTAL BXP</span>
                 <span class="stat-value" id="val-total-bxp">0</span>
-                <span class="stat-rate" style="color: #6b7280;">-</span>
+                <span class="stat-rate" style="color: #9ca3af;">-</span>
             </div>
             <div class="stat-row-divider"></div>
 
@@ -279,7 +280,7 @@
         const JOB_BXP_KEY = "exp_token_a|train|train";
         const STOP_MONEY_THRESHOLD = 100000; // >= 100k counts as 1 stop
 
-        // Robust compact number formatter (No skipping/flipping between small and large values)
+        // Robust compact number formatter
         function formatCompact(num) {
             if (num === null || num === undefined || isNaN(num)) return "0";
             const isNegative = num < 0;
@@ -301,7 +302,7 @@
                 if (abs >= tier.limit) {
                     const scaled = abs / tier.limit;
                     let formatted = scaled >= 100 ? scaled.toFixed(0) : (scaled >= 10 ? scaled.toFixed(1) : scaled.toFixed(2));
-                    formatted = parseFloat(formatted).toString(); // Safely removes trailing zeroes without regex clipping
+                    formatted = parseFloat(formatted).toString();
                     return (isNegative ? "-" : "") + formatted + tier.suffix;
                 }
             }
@@ -530,7 +531,6 @@
                         totalCashEarned += delta;
                         elMoney.textContent = formatCompact(totalCashEarned);
 
-                        // Trigger stop and start timer if payout is >= 100,000
                         if (delta >= STOP_MONEY_THRESHOLD) {
                             stopCount++;
                             elStops.textContent = String(stopCount);
@@ -562,7 +562,7 @@
                 }
             }
 
-            // 4. BXP Tokens (Both Total Inventory Count & Net Session Change)
+            // 4. BXP Tokens (Total Inventory Count & Net Session Change)
             let rawBxp = payload[JOB_BXP_KEY];
             if ((rawBxp === undefined || rawBxp === null) && payload.inventory) {
                 try {
@@ -578,14 +578,12 @@
                 if (!isNaN(bxpNum)) {
                     currentBxp = bxpNum;
 
-                    // Display total unused tokens sitting in inventory
                     elTotalBxp.textContent = formatCompact(currentBxp);
 
                     if (startBxp === null) {
                         startBxp = bxpNum;
                     }
 
-                    // Net session change
                     netBxp = currentBxp - startBxp;
                     elBxp.textContent = formatCompact(netBxp);
                     updateHourlyRatesAndTimer();
