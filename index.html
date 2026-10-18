@@ -167,7 +167,7 @@
             color: #f3f4f6;
         }
 
-        /* High-contrast colors tuned for rgb(80, 80, 80) */
+        /* Colors */
         .stat-row.xp .stat-value { color: #60a5fa; }
         .stat-row.bxp .stat-value { color: #c084fc; }
         .stat-row.total-bxp .stat-value { color: #d8b4fe; }
@@ -213,7 +213,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v25</span>
+                <span class="app-version">v26</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -249,7 +249,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- STOPS (Triggered on >= 100k drop) -->
+            <!-- STOPS (Counted by money: >= 100k and <= 5m) -->
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
                 <span class="stat-value" id="val-stops">0</span>
@@ -278,7 +278,12 @@
         const COORD_OFFSET = 10000;
         const JOB_EXP_KEY = "exp_train_train";
         const JOB_BXP_KEY = "exp_token_a|train|train";
-        const STOP_MONEY_THRESHOLD = 100000; // >= 100k counts as 1 stop
+
+        // Stop payout bracket & anti-double-count debounce window
+        const STOP_MIN_PAYOUT = 100000;  // Minimum 100k
+        const STOP_MAX_PAYOUT = 5000000; // Ignore if above 5m
+        const STOP_DEBOUNCE_MS = 5000;  // 5 seconds cooldown between registered stops
+        let lastStopTimestamp = 0;
 
         // Robust compact number formatter
         function formatCompact(num) {
@@ -347,7 +352,7 @@
         let currentBxp = 0;
         let netBxp = 0;
 
-        // Cumulative positive Money tracking
+        // Cumulative Money tracking
         let lastWallet = null;
         let totalCashEarned = 0;
 
@@ -377,8 +382,9 @@
             netBxp = 0;
             totalCashEarned = 0;
             stopCount = 0;
+            lastStopTimestamp = 0;
 
-            // Defer timer until next stop
+            // Defer timer until next qualifying stop
             sessionStartTime = null;
             elTimer.textContent = "00:00:00";
 
@@ -522,7 +528,7 @@
                 renderBinarizedText(ctxY, canvasY, displayY);
             }
 
-            // 2. Cash Earned & MONEY-BASED STOP TRIGGER (>= 100k)
+            // 2. Cash Earned & FILTERED STOP COUNTING (100k <= delta <= 5m with 5s debounce)
             if (payload.wallet !== undefined) {
                 const currentWallet = Number(payload.wallet);
                 if (lastWallet !== null) {
@@ -531,12 +537,17 @@
                         totalCashEarned += delta;
                         elMoney.textContent = formatCompact(totalCashEarned);
 
-                        if (delta >= STOP_MONEY_THRESHOLD) {
-                            stopCount++;
-                            elStops.textContent = String(stopCount);
+                        const now = Date.now();
+                        // Only count as a stop if between 100k and 5m AND at least 5s has passed since the last stop
+                        if (delta >= STOP_MIN_PAYOUT && delta <= STOP_MAX_PAYOUT) {
+                            if (now - lastStopTimestamp >= STOP_DEBOUNCE_MS) {
+                                stopCount++;
+                                lastStopTimestamp = now;
+                                elStops.textContent = String(stopCount);
 
-                            if (sessionStartTime === null) {
-                                sessionStartTime = Date.now();
+                                if (sessionStartTime === null) {
+                                    sessionStartTime = now;
+                                }
                             }
                         }
 
