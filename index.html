@@ -50,7 +50,7 @@
             padding: 10px 16px 12px 16px;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
             pointer-events: auto;
         }
 
@@ -138,7 +138,7 @@
         .stat-label {
             width: 145px;
             flex-shrink: 0;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: 800;
             letter-spacing: 0.5px;
             text-transform: uppercase;
@@ -150,7 +150,7 @@
             flex: 1;
             text-align: center;
             font-family: "Consolas", monospace;
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 700;
             letter-spacing: 0.5px;
         }
@@ -160,7 +160,7 @@
             flex-shrink: 0;
             text-align: right;
             font-family: "Consolas", monospace;
-            font-size: 17px;
+            font-size: 16px;
             font-weight: 700;
             letter-spacing: 0.5px;
             color: #f3f4f6;
@@ -176,6 +176,8 @@
         .stat-row.pbxp-profit .stat-value { color: #d946ef; }
         .stat-row.total-pbxp .stat-value { color: #f0abfc; }
         .stat-row.stops .stat-value { color: #fbbf24; }
+        .stat-row.avg-time .stat-value { color: #fde047; }
+        .stat-row.streaks .stat-value { color: #f59e0b; }
         .stat-row.money .stat-value { color: #4ade80; }
         .stat-row.total-bxp-money .stat-value { color: #34d399; }
         .stat-row.grand-total .stat-value { color: #22c55e; }
@@ -225,7 +227,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v30</span>
+                <span class="app-version">v32</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -309,15 +311,39 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 10. $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
+            <!-- 10. AVG TIME (6 STOPS) -->
+            <div class="stat-row avg-time">
+                <span class="stat-label">AVG TIME (6 STOPS)</span>
+                <span class="stat-value" id="val-avg-6">--:--</span>
+                <span class="stat-rate" style="color: #9ca3af;">-</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 11. AVG TIME (12 STOPS) -->
+            <div class="stat-row avg-time">
+                <span class="stat-label">AVG TIME (12 STOPS)</span>
+                <span class="stat-value" id="val-avg-12">--:--</span>
+                <span class="stat-rate" style="color: #9ca3af;">-</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 12. STREAKS EARNED -->
+            <div class="stat-row streaks">
+                <span class="stat-label">STREAKS EARNED</span>
+                <span class="stat-value" id="val-streaks">0</span>
+                <span class="stat-rate" id="rate-streaks">0</span>
+            </div>
+            <div class="stat-row-divider thick"></div>
+
+            <!-- 13. $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
                 <span class="stat-rate" id="rate-money">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 11. TOTAL BXP $ -->
+            <!-- 14. TOTAL BXP $ -->
             <div class="stat-row total-bxp-money">
-                <span class="stat-label">TOTAL BXP $</span> <span class="stat-value" id="val-total-bxp-money">0</span> <span class="stat-rate" id="rate-total-bxp-money">0</span> </div> <div class="stat-row-divider thick"></div>              <!-- 12. TOTAL $$$ --> <div class="stat-row grand-total"> <span class="stat-label">TOTAL $$$</span>
+                <span class="stat-label">TOTAL BXP $</span> <span class="stat-value" id="val-total-bxp-money">0</span> <span class="stat-rate" id="rate-total-bxp-money">0</span> </div> <div class="stat-row-divider thick"></div>              <!-- 15. TOTAL $$$ --> <div class="stat-row grand-total"> <span class="stat-label">TOTAL $$$</span>
                 <span class="stat-value" id="val-grand-total">0</span>
                 <span class="stat-rate" id="rate-grand-total">0</span>
             </div>
@@ -385,6 +411,20 @@
             return (isNegative ? "-" : "") + Math.round(abs).toString();
         }
 
+        // Formats milliseconds into clean mm:ss (or hh:mm:ss if >= 1hr)
+        function formatDuration(ms) {
+            if (!ms || ms <= 0 || isNaN(ms)) return "--:--";
+            const totalSec = Math.round(ms / 1000);
+            const hrs = Math.floor(totalSec / 3600);
+            const mins = Math.floor((totalSec % 3600) / 60);
+            const secs = totalSec % 60;
+
+            if (hrs > 0) {
+                return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
         // Canvases
         const canvasX = document.getElementById('cv-x');
         const canvasY = document.getElementById('cv-y');
@@ -412,9 +452,15 @@
         const elPbxpProfitRate = document.getElementById('rate-pbxp-profit');
         const elTotalPbxp = document.getElementById('val-total-pbxp');
 
-        // Stops & Revenue Section
+        // Stops, Timers & Streaks
         const elStops = document.getElementById('val-stops');
         const elStopsRate = document.getElementById('rate-stops');
+        const elAvg6 = document.getElementById('val-avg-6');
+        const elAvg12 = document.getElementById('val-avg-12');
+        const elStreaks = document.getElementById('val-streaks');
+        const elStreaksRate = document.getElementById('rate-streaks');
+
+        // Revenue Section
         const elMoney = document.getElementById('val-money');
         const elMoneyRate = document.getElementById('rate-money');
         const elTotalBxpMoney = document.getElementById('val-total-bxp-money');
@@ -476,11 +522,13 @@
 
             sessionStartTime = null;
             elTimer.textContent = "00:00:00";
+            elAvg6.textContent = "--:--";
+            elAvg12.textContent = "--:--";
 
             [elXp, elXpRate, elBxp, elBxpRate, elTbxpProfit, elTbxpProfitRate,
              elPxp, elPxpRate, elPbxp, elPbxpRate, elPbxpProfit, elPbxpProfitRate,
-             elStops, elStopsRate, elMoney, elMoneyRate, elTotalBxpMoney, 
-             elTotalBxpMoneyRate, elGrandTotal, elGrandTotalRate].forEach(el => el.textContent = "0");
+             elStops, elStopsRate, elStreaks, elStreaksRate, elMoney, elMoneyRate, 
+             elTotalBxpMoney, elTotalBxpMoneyRate, elGrandTotal, elGrandTotalRate].forEach(el => el.textContent = "0");
 
             btnReset.blur();
             if (document.activeElement) document.activeElement.blur();
@@ -550,6 +598,16 @@
             } catch (e) {}
         }, 1000);
 
+        function updateCombinedRevenue() {
+            const trainProfit = sessionBxp * TRAIN_BXP_VAL;
+            const playerProfit = sessionPbxp * PLAYER_BXP_VAL;
+            const totalBxpProf = trainProfit + playerProfit;
+            const grandTotal = totalCashEarned + totalBxpProf;
+
+            elTotalBxpMoney.textContent = formatCompact(totalBxpProf);
+            elGrandTotal.textContent = formatCompact(grandTotal);
+        }
+
         function updateHourlyRatesAndTimer() {
             if (!sessionStartTime) return;
 
@@ -560,6 +618,16 @@
             const mins = String(Math.floor((totalSec % 3600) / 60)).padStart(2, '0');
             const secs = String(totalSec % 60).padStart(2, '0');
             elTimer.textContent = `${hrs}:${mins}:${secs}`;
+
+            // Average Stop Pace Calculation
+            if (stopCount > 0) {
+                const msPerStop = elapsedMs / stopCount;
+                elAvg6.textContent = formatDuration(msPerStop * 6);
+                elAvg12.textContent = formatDuration(msPerStop * 12);
+            } else {
+                elAvg6.textContent = "--:--";
+                elAvg12.textContent = "--:--";
+            }
 
             const elapsedHours = elapsedMs / 3600000;
             if (elapsedHours <= 0) return;
@@ -574,10 +642,15 @@
             elPbxpRate.textContent = formatCompact(sessionPbxp / elapsedHours);
             elPbxpProfitRate.textContent = formatCompact((sessionPbxp * PLAYER_BXP_VAL) / elapsedHours);
 
-            // Stops Rate
+            // Stops & Streaks Rates
             elStopsRate.textContent = formatCompact(Math.round(stopCount / elapsedHours));
+            
+            const streaksCount = Math.floor(stopCount / 6);
+            const streaksPerHour = (stopCount / 6) / elapsedHours;
+            elStreaks.textContent = formatCompact(streaksCount);
+            elStreaksRate.textContent = (streaksPerHour >= 10 ? streaksPerHour.toFixed(1) : streaksPerHour.toFixed(2)).replace(/\.?0+$/, "");
 
-            // Combined Revenue Rates
+            // Revenue Rates
             const totalBxpProf = (sessionBxp * TRAIN_BXP_VAL) + (sessionPbxp * PLAYER_BXP_VAL);
             const grandTotalProf = totalCashEarned + totalBxpProf;
 
@@ -632,6 +705,8 @@
                                 if (sessionStartTime === null) {
                                     sessionStartTime = now;
                                 }
+
+                                elStreaks.textContent = formatCompact(Math.floor(stopCount / 6));
                             }
                         }
 
@@ -740,16 +815,6 @@
                 }
             }
         });
-
-        function updateCombinedRevenue() {
-            const trainProfit = sessionBxp * TRAIN_BXP_VAL;
-            const playerProfit = sessionPbxp * PLAYER_BXP_VAL;
-            const totalBxpProf = trainProfit + playerProfit;
-            const grandTotal = totalCashEarned + totalBxpProf;
-
-            elTotalBxpMoney.textContent = formatCompact(totalBxpProf);
-            elGrandTotal.textContent = formatCompact(grandTotal);
-        }
     </script>
 </body>
 </html>
