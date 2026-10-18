@@ -124,7 +124,7 @@
             margin-bottom: 2px;
         }
 
-        .col-h-left { width: 120px; flex-shrink: 0; }
+        .col-h-left { width: 145px; flex-shrink: 0; }
         .col-h-mid { flex: 1; text-align: center; }
         .col-h-right { width: 85px; flex-shrink: 0; text-align: right; }
 
@@ -136,13 +136,14 @@
         }
 
         .stat-label {
-            width: 120px;
+            width: 145px;
             flex-shrink: 0;
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 800;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
             color: #e5e7eb;
+            white-space: nowrap;
         }
 
         .stat-value {
@@ -165,7 +166,7 @@
             color: #f3f4f6;
         }
 
-        /* Specific row accent styling */
+        /* Accent styling */
         .stat-row.xp .stat-value { color: #60a5fa; }
         .stat-row.bxp .stat-value { color: #c084fc; }
         .stat-row.bxp-profit .stat-value { color: #a855f7; }
@@ -224,7 +225,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v29</span>
+                <span class="app-version">v30</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -252,17 +253,17 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 3. T-BXP PROFIT ($850 ea) -->
+            <!-- 3. TRAIN BXP PROFIT -->
             <div class="stat-row bxp-profit">
-                <span class="stat-label">T-BXP PROFIT</span>
+                <span class="stat-label">TRAIN BXP PROFIT</span>
                 <span class="stat-value" id="val-tbxp-profit">0</span>
                 <span class="stat-rate" id="rate-tbxp-profit">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 4. TOTAL T-BXP (Unused Train tokens in inventory) -->
+            <!-- 4. TOTAL TRAIN BXP -->
             <div class="stat-row total-tbxp">
-                <span class="stat-label">TOTAL T-BXP</span>
+                <span class="stat-label">TOTAL TRAIN BXP</span>
                 <span class="stat-value" id="val-total-tbxp">0</span>
                 <span class="stat-rate" style="color: #9ca3af;">-</span>
             </div>
@@ -284,17 +285,17 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 7. P-BXP PROFIT ($425 ea) -->
+            <!-- 7. PLAYER BXP PROFIT -->
             <div class="stat-row pbxp-profit">
-                <span class="stat-label">P-BXP PROFIT</span>
+                <span class="stat-label">PLAYER BXP PROFIT</span>
                 <span class="stat-value" id="val-pbxp-profit">0</span>
                 <span class="stat-rate" id="rate-pbxp-profit">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 8. TOTAL P-BXP (Unused Player tokens in inventory) -->
+            <!-- 8. TOTAL PLAYER BXP -->
             <div class="stat-row total-pbxp">
-                <span class="stat-label">TOTAL P-BXP</span>
+                <span class="stat-label">TOTAL PLAYER BXP</span>
                 <span class="stat-value" id="val-total-pbxp">0</span>
                 <span class="stat-rate" style="color: #9ca3af;">-</span>
             </div>
@@ -308,15 +309,15 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 10. $$$ (Direct Drop Cash) --> <div class="stat-row money"> <span class="stat-label">$$$</span>
+            <!-- 10. $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
                 <span class="stat-rate" id="rate-money">0</span>
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 11. TOTAL BXP $ (Train BXP Profit + Player BXP Profit) -->
+            <!-- 11. TOTAL BXP $ -->
             <div class="stat-row total-bxp-money">
-                <span class="stat-label">TOTAL BXP $</span> <span class="stat-value" id="val-total-bxp-money">0</span> <span class="stat-rate" id="rate-total-bxp-money">0</span> </div> <div class="stat-row-divider thick"></div>              <!-- 12. TOTAL $$$($$$ + Total BXP $) --> <div class="stat-row grand-total"> <span class="stat-label">TOTAL $$$</span>
+                <span class="stat-label">TOTAL BXP $</span> <span class="stat-value" id="val-total-bxp-money">0</span> <span class="stat-rate" id="rate-total-bxp-money">0</span> </div> <div class="stat-row-divider thick"></div>              <!-- 12. TOTAL $$$ --> <div class="stat-row grand-total"> <span class="stat-label">TOTAL $$$</span>
                 <span class="stat-value" id="val-grand-total">0</span>
                 <span class="stat-rate" id="rate-grand-total">0</span>
             </div>
@@ -354,7 +355,7 @@
         const TRAIN_BXP_VAL = 850;  // $1,000 - 15%
         const PLAYER_BXP_VAL = 425; // $500 - 15%
 
-        // Robust compact number formatter
+        // Compact number formatter
         function formatCompact(num) {
             if (num === null || num === undefined || isNaN(num)) return "0";
             const isNegative = num < 0;
