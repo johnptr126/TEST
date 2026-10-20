@@ -227,7 +227,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v32</span>
+                <span class="app-version">v33</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -578,6 +578,7 @@
             sendTycoon({ type: "getData" });
         }, 300);
 
+        // Targeted polling with dedicated player skill keys included
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -586,8 +587,9 @@
                         JOB_EXP_KEY, 
                         JOB_BXP_KEY,
                         PLAYER_BXP_KEY,
-                        "exp_overall",
-                        "exp_physical_strength",
+                        "exp_player_player",
+                        "exp_player",
+                        "exp_physical_player",
                         "inventory", 
                         "wallet", 
                         "pos_x", 
@@ -717,7 +719,7 @@
                 lastWallet = currentWallet;
             }
 
-            // Train XP
+            // 1. Train XP
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
@@ -733,8 +735,26 @@
                 }
             }
 
-            // Player XP
-            const rawPxp = payload.exp_overall !== undefined ? payload.exp_overall : payload.exp_physical_strength;
+            // 2. Player Skill XP (Evaluates direct skill keys)
+            let rawPxp = undefined;
+            if (typeof payload.exp_player_player === 'number') {
+                rawPxp = payload.exp_player_player;
+            } else if (typeof payload.exp_player === 'number') {
+                rawPxp = payload.exp_player;
+            } else if (typeof payload.exp_physical_player === 'number') {
+                rawPxp = payload.exp_physical_player;
+            }
+
+            // Fallback: check dynamic keys starting with exp_ that contain "player"
+            if (rawPxp === undefined) {
+                for (let k in payload) {
+                    if (k.startsWith("exp_") && k.toLowerCase().includes("player") && typeof payload[k] === 'number') {
+                        rawPxp = payload[k];
+                        break;
+                    }
+                }
+            }
+
             if (typeof rawPxp === 'number' && rawPxp > 0) {
                 if (startPxp === null) {
                     startPxp = rawPxp;
