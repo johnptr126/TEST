@@ -38,7 +38,6 @@
             flex-direction: column;
             gap: 10px;
             align-items: flex-start;
-            transition: opacity 0.1s ease;
         }
 
         /* --- STATS PANEL (rgb(80, 80, 80) Dark Slate Grey) --- */
@@ -228,7 +227,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v34</span>
+                <span class="app-version">v35</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -379,8 +378,8 @@
         const MAX_JOB_BXP_SPEND = 1000;
 
         // Post-Tax Token Prices
-        const TRAIN_BXP_VAL = 850;  // $1,000 - 15%
-        const PLAYER_BXP_VAL = 425; // $500 - 15%
+        const TRAIN_BXP_VAL = 850;
+        const PLAYER_BXP_VAL = 425;
 
         // Compact number formatter
         function formatCompact(num) {
@@ -412,7 +411,6 @@
             return (isNegative ? "-" : "") + Math.round(abs).toString();
         }
 
-        // Formats milliseconds into clean mm:ss (or hh:mm:ss if >= 1hr)
         function formatDuration(ms) {
             if (!ms || ms <= 0 || isNaN(ms)) return "--:--";
             const totalSec = Math.round(ms / 1000);
@@ -472,7 +470,6 @@
         const btnReset = document.getElementById('btn-reset');
         const hudEl = document.getElementById('hud');
 
-        // Visibility & Session State
         let isHudVisible = true;
         let sessionStartTime = null;
 
@@ -540,14 +537,12 @@
             btnReset.blur();
             if (document.activeElement) document.activeElement.blur();
             window.focus();
-            sendTycoon({ type: "pin" });
         });
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' || e.keyCode === 27) {
                 if (document.activeElement) document.activeElement.blur();
                 window.focus();
-                sendTycoon({ type: 'pin' });
             }
         });
 
@@ -581,11 +576,12 @@
         renderBinarizedText(ctxX, canvasX, "10000");
         renderBinarizedText(ctxY, canvasY, "10000");
 
+        // Initial handshake: Only requests data, does NOT force pin
         setTimeout(() => {
-            sendTycoon({ type: "pin" });
             sendTycoon({ type: "getData" });
         }, 300);
 
+        // Targeted polling without pin commands
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -677,7 +673,7 @@
 
             if (!msg) return;
 
-            // Handle Direct App Switching / Focus Events
+            // Detect app switching / tab changes
             if (msg.type === "app:hide" || msg.type === "hide" || msg.action === "hide") {
                 setHudVisibility(false);
                 return;
@@ -686,9 +682,16 @@
                 setHudVisibility(true);
             }
 
+            // Some dashboard versions announce which app is active
+            if (msg.type === "active_app" || msg.type === "app_changed") {
+                if (msg.url && !msg.url.includes(window.location.hostname)) {
+                    setHudVisibility(false);
+                    return;
+                }
+            }
+
             const payload = (msg.type === 'data' && msg.data) ? msg.data : (msg.data ? msg.data : msg);
 
-            // Handle Visibility Flags in Data Payloads
             if (payload.hidden !== undefined) {
                 setHudVisibility(!payload.hidden);
             } else if (payload.visible !== undefined) {
