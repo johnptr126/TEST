@@ -227,7 +227,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v35</span>
+                <span class="app-version">v36</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -495,6 +495,10 @@
         function setHudVisibility(visible) {
             isHudVisible = visible;
             hudEl.style.display = visible ? 'flex' : 'none';
+            if (!visible) {
+                // Inform Tycoon to unpin this window if it switched away
+                sendTycoon({ type: "unpin" });
+            }
         }
 
         function sendTycoon(payload) {
@@ -503,6 +507,18 @@
                 window.parent.postMessage(payload, "*");
             }
         }
+
+        // Automatic Tab & Window Visibility Management
+        document.addEventListener("visibilitychange", () => {
+            if (document.hidden) {
+                setHudVisibility(false);
+            }
+        });
+
+        window.addEventListener("blur", () => {
+            // Releasing focus prevents locking F1
+            if (document.activeElement) document.activeElement.blur();
+        });
 
         btnReset.addEventListener('mousedown', (e) => {
             e.preventDefault();
@@ -534,15 +550,18 @@
              elStops, elStopsRate, elStreaks, elStreaksRate, elMoney, elMoneyRate, 
              elTotalBxpMoney, elTotalBxpMoneyRate, elGrandTotal, elGrandTotalRate].forEach(el => el.textContent = "0");
 
+            // Unfocus immediately and return input lock back to FiveM
             btnReset.blur();
             if (document.activeElement) document.activeElement.blur();
             window.focus();
+            sendTycoon({ type: "pin" });
         });
 
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' || e.keyCode === 27) {
                 if (document.activeElement) document.activeElement.blur();
                 window.focus();
+                sendTycoon({ type: 'pin' });
             }
         });
 
@@ -576,12 +595,12 @@
         renderBinarizedText(ctxX, canvasX, "10000");
         renderBinarizedText(ctxY, canvasY, "10000");
 
-        // Initial handshake: Only requests data, does NOT force pin
+        // Initial handshake
         setTimeout(() => {
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Targeted polling without pin commands
+        // Targeted polling
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -673,18 +692,18 @@
 
             if (!msg) return;
 
-            // Detect app switching / tab changes
-            if (msg.type === "app:hide" || msg.type === "hide" || msg.action === "hide") {
+            // Detect Tycoon Tab Changes
+            if (msg.type === "app:hide" || msg.type === "hide" || msg.action === "hide" || msg.tab_active === false) {
                 setHudVisibility(false);
                 return;
             }
-            if (msg.type === "app:show" || msg.type === "show" || msg.action === "show") {
+            if (msg.type === "app:show" || msg.type === "show" || msg.action === "show" || msg.tab_active === true) {
                 setHudVisibility(true);
             }
 
-            // Some dashboard versions announce which app is active
-            if (msg.type === "active_app" || msg.type === "app_changed") {
-                if (msg.url && !msg.url.includes(window.location.hostname)) {
+            // Check if another app took focus
+            if (msg.type === "active_app" || msg.type === "app_changed" || msg.type === "tab") {
+                if (msg.name && !window.location.href.includes(msg.name)) {
                     setHudVisibility(false);
                     return;
                 }
