@@ -38,6 +38,7 @@
             flex-direction: column;
             gap: 10px;
             align-items: flex-start;
+            transition: opacity 0.1s ease;
         }
 
         /* --- STATS PANEL (rgb(80, 80, 80) Dark Slate Grey) --- */
@@ -227,7 +228,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v33</span>
+                <span class="app-version">v34</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -471,7 +472,8 @@
         const btnReset = document.getElementById('btn-reset');
         const hudEl = document.getElementById('hud');
 
-        // Session Tracking State
+        // Visibility & Session State
+        let isHudVisible = true;
         let sessionStartTime = null;
 
         // Train Tracking
@@ -492,6 +494,11 @@
         let stopCount = 0;
         let lastWallet = null;
         let totalCashEarned = 0;
+
+        function setHudVisibility(visible) {
+            isHudVisible = visible;
+            hudEl.style.display = visible ? 'flex' : 'none';
+        }
 
         function sendTycoon(payload) {
             window.postMessage(payload, "*");
@@ -546,6 +553,7 @@
 
         // 1-bit rasterizer for CV coordinate cards
         function renderBinarizedText(ctx, canvas, text) {
+            if (!isHudVisible) return;
             const w = canvas.width;
             const h = canvas.height;
 
@@ -578,7 +586,6 @@
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Targeted polling with dedicated player skill keys included
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -621,7 +628,6 @@
             const secs = String(totalSec % 60).padStart(2, '0');
             elTimer.textContent = `${hrs}:${mins}:${secs}`;
 
-            // Average Stop Pace Calculation
             if (stopCount > 0) {
                 const msPerStop = elapsedMs / stopCount;
                 elAvg6.textContent = formatDuration(msPerStop * 6);
@@ -634,12 +640,12 @@
             const elapsedHours = elapsedMs / 3600000;
             if (elapsedHours <= 0) return;
 
-            // Train Section Rates
+            // Train Rates
             elXpRate.textContent = formatCompact(gainedXp / elapsedHours);
             elBxpRate.textContent = formatCompact(sessionBxp / elapsedHours);
             elTbxpProfitRate.textContent = formatCompact((sessionBxp * TRAIN_BXP_VAL) / elapsedHours);
 
-            // Player Section Rates
+            // Player Rates
             elPxpRate.textContent = formatCompact(gainedPxp / elapsedHours);
             elPbxpRate.textContent = formatCompact(sessionPbxp / elapsedHours);
             elPbxpProfitRate.textContent = formatCompact((sessionPbxp * PLAYER_BXP_VAL) / elapsedHours);
@@ -670,10 +676,23 @@
             }
 
             if (!msg) return;
+
+            // Handle Direct App Switching / Focus Events
+            if (msg.type === "app:hide" || msg.type === "hide" || msg.action === "hide") {
+                setHudVisibility(false);
+                return;
+            }
+            if (msg.type === "app:show" || msg.type === "show" || msg.action === "show") {
+                setHudVisibility(true);
+            }
+
             const payload = (msg.type === 'data' && msg.data) ? msg.data : (msg.data ? msg.data : msg);
 
+            // Handle Visibility Flags in Data Payloads
             if (payload.hidden !== undefined) {
-                hudEl.style.display = payload.hidden ? 'none' : 'flex';
+                setHudVisibility(!payload.hidden);
+            } else if (payload.visible !== undefined) {
+                setHudVisibility(Boolean(payload.visible));
             }
 
             // Coordinates
@@ -719,7 +738,7 @@
                 lastWallet = currentWallet;
             }
 
-            // 1. Train XP
+            // Train XP
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
                 if (startXp === null) {
@@ -735,7 +754,7 @@
                 }
             }
 
-            // 2. Player Skill XP (Evaluates direct skill keys)
+            // Player Skill XP
             let rawPxp = undefined;
             if (typeof payload.exp_player_player === 'number') {
                 rawPxp = payload.exp_player_player;
@@ -745,7 +764,6 @@
                 rawPxp = payload.exp_physical_player;
             }
 
-            // Fallback: check dynamic keys starting with exp_ that contain "player"
             if (rawPxp === undefined) {
                 for (let k in payload) {
                     if (k.startsWith("exp_") && k.toLowerCase().includes("player") && typeof payload[k] === 'number') {
