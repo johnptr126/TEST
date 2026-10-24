@@ -227,7 +227,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v36</span>
+                <span class="app-version">v37</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -335,7 +335,9 @@
             </div>
             <div class="stat-row-divider thick"></div>
 
-            <!-- 13. $$$ --> <div class="stat-row money"> <span class="stat-label">$$$</span>
+            <!-- 13. $$$ -->
+            <div class="stat-row money">
+                <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
                 <span class="stat-rate" id="rate-money">0</span>
             </div>
@@ -343,7 +345,15 @@
 
             <!-- 14. TOTAL BXP $ -->
             <div class="stat-row total-bxp-money">
-                <span class="stat-label">TOTAL BXP $</span> <span class="stat-value" id="val-total-bxp-money">0</span> <span class="stat-rate" id="rate-total-bxp-money">0</span> </div> <div class="stat-row-divider thick"></div>              <!-- 15. TOTAL $$$ --> <div class="stat-row grand-total"> <span class="stat-label">TOTAL $$$</span>
+                <span class="stat-label">TOTAL BXP $</span>
+                <span class="stat-value" id="val-total-bxp-money">0</span>
+                <span class="stat-rate" id="rate-total-bxp-money">0</span>
+            </div>
+            <div class="stat-row-divider thick"></div>
+
+            <!-- 15. TOTAL $$$ -->
+            <div class="stat-row grand-total">
+                <span class="stat-label">TOTAL $$$</span>
                 <span class="stat-value" id="val-grand-total">0</span>
                 <span class="stat-rate" id="rate-grand-total">0</span>
             </div>
@@ -377,8 +387,8 @@
         // BXP Spend filter (ignore bulk sales > 1000)
         const MAX_JOB_BXP_SPEND = 1000;
 
-        // Post-Tax Token Prices
-        const TRAIN_BXP_VAL = 850;
+        // Post-Tax Token Prices ($500 - 15% = $425)
+        const TRAIN_BXP_VAL = 425;
         const PLAYER_BXP_VAL = 425;
 
         // Compact number formatter
@@ -496,7 +506,6 @@
             isHudVisible = visible;
             hudEl.style.display = visible ? 'flex' : 'none';
             if (!visible) {
-                // Inform Tycoon to unpin this window if it switched away
                 sendTycoon({ type: "unpin" });
             }
         }
@@ -508,7 +517,6 @@
             }
         }
 
-        // Automatic Tab & Window Visibility Management
         document.addEventListener("visibilitychange", () => {
             if (document.hidden) {
                 setHudVisibility(false);
@@ -516,7 +524,6 @@
         });
 
         window.addEventListener("blur", () => {
-            // Releasing focus prevents locking F1
             if (document.activeElement) document.activeElement.blur();
         });
 
@@ -550,7 +557,6 @@
              elStops, elStopsRate, elStreaks, elStreaksRate, elMoney, elMoneyRate, 
              elTotalBxpMoney, elTotalBxpMoneyRate, elGrandTotal, elGrandTotalRate].forEach(el => el.textContent = "0");
 
-            // Unfocus immediately and return input lock back to FiveM
             btnReset.blur();
             if (document.activeElement) document.activeElement.blur();
             window.focus();
@@ -595,12 +601,10 @@
         renderBinarizedText(ctxX, canvasX, "10000");
         renderBinarizedText(ctxY, canvasY, "10000");
 
-        // Initial handshake
         setTimeout(() => {
             sendTycoon({ type: "getData" });
         }, 300);
 
-        // Targeted polling
         setInterval(() => {
             try {
                 sendTycoon({ 
@@ -692,7 +696,6 @@
 
             if (!msg) return;
 
-            // Detect Tycoon Tab Changes
             if (msg.type === "app:hide" || msg.type === "hide" || msg.action === "hide" || msg.tab_active === false) {
                 setHudVisibility(false);
                 return;
@@ -701,7 +704,6 @@
                 setHudVisibility(true);
             }
 
-            // Check if another app took focus
             if (msg.type === "active_app" || msg.type === "app_changed" || msg.type === "tab") {
                 if (msg.name && !window.location.href.includes(msg.name)) {
                     setHudVisibility(false);
