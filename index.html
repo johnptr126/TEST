@@ -168,6 +168,7 @@
 
         /* Accent styling */
         .stat-row.xp .stat-value { color: #60a5fa; }
+        .stat-row.eta .stat-value { color: #93c5fd; }
         .stat-row.bxp .stat-value { color: #c084fc; }
         .stat-row.bxp-profit .stat-value { color: #a855f7; }
         .stat-row.total-tbxp .stat-value { color: #d8b4fe; }
@@ -227,7 +228,7 @@
         <!-- TOP: 3-Column Stats Dashboard -->
         <div class="stats-panel">
             <div class="stats-header">
-                <span class="app-version">v37</span>
+                <span class="app-version">v38</span>
                 <span class="session-timer" id="session-timer">00:00:00</span>
                 <button class="btn-reset" id="btn-reset" tabindex="-1" title="Reset current session telemetry">RESET</button>
             </div>
@@ -247,7 +248,15 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 2. TRAIN BXP -->
+            <!-- 2. TIME TO 100M -->
+            <div class="stat-row eta">
+                <span class="stat-label">TIME TO 100M</span>
+                <span class="stat-value" id="val-eta-100m">--:--</span>
+                <span class="stat-rate" id="rate-eta-100m" style="color: #93c5fd;">--</span>
+            </div>
+            <div class="stat-row-divider"></div>
+
+            <!-- 3. TRAIN BXP -->
             <div class="stat-row bxp">
                 <span class="stat-label">TRAIN BXP</span>
                 <span class="stat-value" id="val-bxp">0</span>
@@ -255,7 +264,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 3. TRAIN BXP PROFIT -->
+            <!-- 4. TRAIN BXP PROFIT -->
             <div class="stat-row bxp-profit">
                 <span class="stat-label">TRAIN BXP PROFIT</span>
                 <span class="stat-value" id="val-tbxp-profit">0</span>
@@ -263,7 +272,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 4. TOTAL TRAIN BXP -->
+            <!-- 5. TOTAL TRAIN BXP -->
             <div class="stat-row total-tbxp">
                 <span class="stat-label">TOTAL TRAIN BXP</span>
                 <span class="stat-value" id="val-total-tbxp">0</span>
@@ -271,7 +280,7 @@
             </div>
             <div class="stat-row-divider thick"></div>
 
-            <!-- 5. PLAYER XP -->
+            <!-- 6. PLAYER XP -->
             <div class="stat-row pxp">
                 <span class="stat-label">PLAYER XP</span>
                 <span class="stat-value" id="val-pxp">0</span>
@@ -279,7 +288,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 6. PLAYER BXP -->
+            <!-- 7. PLAYER BXP -->
             <div class="stat-row pbxp">
                 <span class="stat-label">PLAYER BXP</span>
                 <span class="stat-value" id="val-pbxp">0</span>
@@ -287,7 +296,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 7. PLAYER BXP PROFIT -->
+            <!-- 8. PLAYER BXP PROFIT -->
             <div class="stat-row pbxp-profit">
                 <span class="stat-label">PLAYER BXP PROFIT</span>
                 <span class="stat-value" id="val-pbxp-profit">0</span>
@@ -295,7 +304,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 8. TOTAL PLAYER BXP -->
+            <!-- 9. TOTAL PLAYER BXP -->
             <div class="stat-row total-pbxp">
                 <span class="stat-label">TOTAL PLAYER BXP</span>
                 <span class="stat-value" id="val-total-pbxp">0</span>
@@ -303,7 +312,7 @@
             </div>
             <div class="stat-row-divider thick"></div>
 
-            <!-- 9. STOPS -->
+            <!-- 10. STOPS -->
             <div class="stat-row stops">
                 <span class="stat-label">STOPS</span>
                 <span class="stat-value" id="val-stops">0</span>
@@ -311,7 +320,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 10. AVG TIME (6 STOPS) -->
+            <!-- 11. AVG TIME (6 STOPS) -->
             <div class="stat-row avg-time">
                 <span class="stat-label">AVG TIME (6 STOPS)</span>
                 <span class="stat-value" id="val-avg-6">--:--</span>
@@ -319,7 +328,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 11. AVG TIME (12 STOPS) -->
+            <!-- 12. AVG TIME (12 STOPS) -->
             <div class="stat-row avg-time">
                 <span class="stat-label">AVG TIME (12 STOPS)</span>
                 <span class="stat-value" id="val-avg-12">--:--</span>
@@ -327,7 +336,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 12. STREAKS EARNED -->
+            <!-- 13. STREAKS EARNED -->
             <div class="stat-row streaks">
                 <span class="stat-label">STREAKS EARNED</span>
                 <span class="stat-value" id="val-streaks">0</span>
@@ -335,7 +344,7 @@
             </div>
             <div class="stat-row-divider thick"></div>
 
-            <!-- 13. $$$ -->
+            <!-- 14. $$$ -->
             <div class="stat-row money">
                 <span class="stat-label">$$$</span>
                 <span class="stat-value" id="val-money">0</span>
@@ -343,7 +352,7 @@
             </div>
             <div class="stat-row-divider"></div>
 
-            <!-- 14. TOTAL BXP $ -->
+            <!-- 15. TOTAL BXP $ -->
             <div class="stat-row total-bxp-money">
                 <span class="stat-label">TOTAL BXP $</span>
                 <span class="stat-value" id="val-total-bxp-money">0</span>
@@ -351,7 +360,7 @@
             </div>
             <div class="stat-row-divider thick"></div>
 
-            <!-- 15. TOTAL $$$ -->
+            <!-- 16. TOTAL $$$ -->
             <div class="stat-row grand-total">
                 <span class="stat-label">TOTAL $$$</span>
                 <span class="stat-value" id="val-grand-total">0</span>
@@ -372,6 +381,7 @@
 
     <script>
         const COORD_OFFSET = 10000;
+        const TARGET_EXP = 100000000; // 100M Goal
 
         // Telemetry Keys
         const JOB_EXP_KEY = "exp_train_train";
@@ -446,6 +456,8 @@
         // Train Section
         const elXp = document.getElementById('val-xp');
         const elXpRate = document.getElementById('rate-xp');
+        const elEta100m = document.getElementById('val-eta-100m');
+        const elEta100mRate = document.getElementById('rate-eta-100m');
         const elBxp = document.getElementById('val-bxp');
         const elBxpRate = document.getElementById('rate-bxp');
         const elTbxpProfit = document.getElementById('val-tbxp-profit');
@@ -551,6 +563,8 @@
             elTimer.textContent = "00:00:00";
             elAvg6.textContent = "--:--";
             elAvg12.textContent = "--:--";
+            elEta100m.textContent = "--:--";
+            elEta100mRate.textContent = "--";
 
             [elXp, elXpRate, elBxp, elBxpRate, elTbxpProfit, elTbxpProfitRate,
              elPxp, elPxpRate, elPbxp, elPbxpRate, elPbxpProfit, elPbxpProfitRate,
@@ -659,8 +673,25 @@
             const elapsedHours = elapsedMs / 3600000;
             if (elapsedHours <= 0) return;
 
-            // Train Rates
-            elXpRate.textContent = formatCompact(gainedXp / elapsedHours);
+            // Train Rates & 100M ETA
+            const xpHour = gainedXp / elapsedHours;
+            elXpRate.textContent = formatCompact(xpHour);
+
+            if (currentXp >= TARGET_EXP) {
+                elEta100m.textContent = "COMPLETED";
+                elEta100mRate.textContent = "0h";
+            } else if (xpHour > 0) {
+                const remainingExp = TARGET_EXP - currentXp;
+                const hoursRemaining = remainingExp / xpHour;
+                const msRemaining = hoursRemaining * 3600000;
+                
+                elEta100m.textContent = formatDuration(msRemaining);
+                elEta100mRate.textContent = (hoursRemaining >= 100 ? hoursRemaining.toFixed(0) : hoursRemaining.toFixed(1)) + "h";
+            } else {
+                elEta100m.textContent = "--:--";
+                elEta100mRate.textContent = "--";
+            }
+
             elBxpRate.textContent = formatCompact(sessionBxp / elapsedHours);
             elTbxpProfitRate.textContent = formatCompact((sessionBxp * TRAIN_BXP_VAL) / elapsedHours);
 
@@ -765,16 +796,13 @@
             // Train XP
             const rawXp = payload[JOB_EXP_KEY];
             if (typeof rawXp === 'number' && rawXp > 0) {
+                currentXp = rawXp;
                 if (startXp === null) {
                     startXp = rawXp;
-                    currentXp = rawXp;
-                } else if (rawXp > currentXp) {
-                    currentXp = rawXp;
+                } else if (rawXp > startXp) {
                     gainedXp = currentXp - startXp;
                     elXp.textContent = formatCompact(gainedXp);
                     updateHourlyRatesAndTimer();
-                } else if (rawXp < currentXp) {
-                    currentXp = rawXp;
                 }
             }
 
